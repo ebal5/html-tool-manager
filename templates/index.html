@@ -96,8 +96,13 @@
                     const actionsCell = document.createElement('td');
                     actionsCell.innerHTML = `<div class="grid">
                         <a href="/tools/view/${tool.id}" role="button" class="secondary outline">View</a>
-                        <a href="/tools/edit/${tool.id}" role="button" class="secondary">Edit</a>
-                        <button class="contrast" onclick="deleteTool(${tool.id}, this)">Delete</button>
+                        <details class="dropdown">
+                            <summary role="button" class="contrast outline">⋮</summary>
+                            <ul style="position: absolute; z-index: 1;">
+                                <li><a href="/tools/edit/${tool.id}">Edit</a></li>
+                                <li><a href="#" onclick="event.preventDefault(); deleteTool(${tool.id}, this)">Delete</a></li>
+                            </ul>
+                        </details>
                     </div>`;
 
                     tr.appendChild(nameCell);
