@@ -47,17 +47,20 @@ def read_tools(
         parsed_query = parse_query(q)
         tools = repo.search_tools(parsed_query, sort=sort, offset=offset, limit=limit)
     else:
-        # ソート順をget_all_toolsにも適用できるように修正が必要だが、一旦保留
         tools = repo.get_all_tools(offset=offset, limit=limit)
-    return tools
+    
+    # ToolReadモデルを使って明示的にレスポンスを構築
+    return [ToolRead.model_validate(tool) for tool in tools]
 
-@router.get("/{tool_id}", response_model=List[ToolRead])
+@router.get("/{tool_id}", response_model=ToolRead)
 def read_tool(tool_id: int, session: Session = Depends(get_session)):
     repo = ToolRepository(session)
-    tool = repo.get_tool(tool_id)
-    if not tool:
+    db_tool = repo.get_tool(tool_id)
+    if not db_tool:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tool not found")
-    return tool
+    
+    # ToolReadモデルを使って明示的にレスポンスを構築
+    return ToolRead.model_validate(db_tool)
 
 @router.put("/{tool_id}", response_model=ToolRead)
 def update_tool(tool_id: int, tool_data: ToolCreate, session: Session = Depends(get_session)):
