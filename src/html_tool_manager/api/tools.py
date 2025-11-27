@@ -68,8 +68,22 @@ def update_tool(tool_id: int, tool_data: ToolCreate, session: Session = Depends(
     tool_to_update = repo.get_tool(tool_id)
     if not tool_to_update:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tool not found")
-    
-    update_data = tool_data.model_dump(exclude_unset=True)
+
+    # If html_content is provided, overwrite the existing file
+    if tool_data.html_content is not None:
+        # Ensure we are only editing files that were created by the app
+        if tool_to_update.filepath and tool_to_update.filepath.startswith('static/tools/'):
+            with open(tool_to_update.filepath, "w") as f:
+                f.write(tool_data.html_content)
+        else:
+            # Prevent overwriting arbitrary files specified by path
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot update HTML content for tools not created via paste.",
+            )
+
+    # Update metadata
+    update_data = tool_data.model_dump(exclude_unset=True, exclude={'html_content'})
     tool_to_update.sqlmodel_update(update_data)
     
     updated_tool = repo.update_tool(tool_id, tool_to_update)

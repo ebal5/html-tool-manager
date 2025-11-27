@@ -19,10 +19,8 @@
             <input type="text" id="tags" name="tags" placeholder="calculator, text, utility">
             <small>Comma separated values.</small>
 
-            <p><strong>Note:</strong> Tool source content cannot be edited. To change the source, please create a new tool.</p>
-            <div id="filepath-display">
-                <label>File Path</label>
-                <input type="text" id="filepath" name="filepath" readonly>
+            <div id="source-section">
+                <!-- Content will be loaded here by JavaScript -->
             </div>
             
             <button type="submit" id="submit-btn">Update Tool</button>
@@ -36,23 +34,43 @@
         const nameInput = document.getElementById('name');
         const descriptionInput = document.getElementById('description');
         const tagsInput = document.getElementById('tags');
-        const filepathInput = document.getElementById('filepath');
+        const sourceSection = document.getElementById('source-section');
         const messageDiv = document.getElementById('message');
         const submitBtn = document.getElementById('submit-btn');
 
-        // Fetch existing tool data and populate the form
+        let originalFilepath = '';
+        let isPastedContent = false;
+
         async function loadToolData() {
             try {
                 const response = await fetch(`/api/tools/${toolId}`);
-                if (!response.ok) {
-                    throw new Error('Tool not found');
-                }
+                if (!response.ok) throw new Error('Tool not found');
                 const tool = await response.json();
 
                 nameInput.value = tool.name;
                 descriptionInput.value = tool.description || '';
                 tagsInput.value = tool.tags.join(', ');
-                filepathInput.value = tool.filepath;
+                originalFilepath = tool.filepath;
+
+                // Check if the tool was created by pasting content
+                isPastedContent = originalFilepath.startsWith('static/tools/');
+                
+                if (isPastedContent) {
+                    // Fetch the HTML content and display a textarea
+                    sourceSection.innerHTML = '<p aria-busy="true">Loading content...</p>';
+                    const htmlResponse = await fetch(`/${originalFilepath}`);
+                    const htmlContent = await htmlResponse.text();
+                    sourceSection.innerHTML = `
+                        <label for="html_content">HTML Content</label>
+                        <textarea id="html_content" name="html_content" rows="10">${htmlContent}</textarea>
+                    `;
+                } else {
+                    // Display a read-only filepath
+                    sourceSection.innerHTML = `
+                        <label>File Path</label>
+                        <input type="text" id="filepath" name="filepath" value="${originalFilepath}" readonly>
+                    `;
+                }
 
             } catch (error) {
                 messageDiv.textContent = `❌ Error loading tool data: ${error.message}`;
@@ -61,7 +79,6 @@
             }
         }
 
-        // Form submission logic
         form.addEventListener('submit', async function(event) {
             event.preventDefault();
             submitBtn.setAttribute('aria-busy', 'true');
@@ -70,14 +87,17 @@
                 name: nameInput.value,
                 description: descriptionInput.value,
                 tags: tagsInput.value.split(',').map(tag => tag.trim()).filter(tag => tag !== ''),
-                filepath: filepathInput.value // Keep the original filepath
+                filepath: originalFilepath // Always send the original filepath
             };
+
+            // If it was a pasted tool, include the updated HTML content
+            if (isPastedContent) {
+                updatedData.html_content = document.getElementById('html_content').value;
+            }
 
             const response = await fetch(`/api/tools/${toolId}`, {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(updatedData)
             });
 
@@ -93,7 +113,6 @@
             submitBtn.removeAttribute('aria-busy');
         });
 
-        // Initial load
         loadToolData();
     </script>
 {% endblock %}
