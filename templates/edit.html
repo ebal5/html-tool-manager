@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Tool - HTML Tool Manager{% endblock %}
+
+{% block content %}
+    <article>
+        <header>
+            <h2>Edit Tool (ID: {{ tool_id }})</h2>
+        </header>
+
+        <form id="edit-tool-form">
+            <label for="name">Tool Name</label>
+            <input type="text" id="name" name="name" placeholder="My Awesome Tool" required>
+            
+            <label for="description">Description</label>
+            <textarea id="description" name="description" placeholder="A short description of what this tool does."></textarea>
+            
+            <label for="tags">Tags</label>
+            <input type="text" id="tags" name="tags" placeholder="calculator, text, utility">
+            <small>Comma separated values.</small>
+
+            <p><strong>Note:</strong> Tool source content cannot be edited. To change the source, please create a new tool.</p>
+            <div id="filepath-display">
+                <label>File Path</label>
+                <input type="text" id="filepath" name="filepath" readonly>
+            </div>
+            
+            <button type="submit" id="submit-btn">Update Tool</button>
+        </form>
+        <p id="message" style="margin-top: 1rem;"></p>
+    </article>
+
+    <script>
+        const toolId = {{ tool_id }};
+        const form = document.getElementById('edit-tool-form');
+        const nameInput = document.getElementById('name');
+        const descriptionInput = document.getElementById('description');
+        const tagsInput = document.getElementById('tags');
+        const filepathInput = document.getElementById('filepath');
+        const messageDiv = document.getElementById('message');
+        const submitBtn = document.getElementById('submit-btn');
+
+        // Fetch existing tool data and populate the form
+        async function loadToolData() {
+            try {
+                const response = await fetch(`/api/tools/${toolId}`);
+                if (!response.ok) {
+                    throw new Error('Tool not found');
+                }
+                const tool = await response.json();
+
+                nameInput.value = tool.name;
+                descriptionInput.value = tool.description || '';
+                tagsInput.value = tool.tags.join(', ');
+                filepathInput.value = tool.filepath;
+
+            } catch (error) {
+                messageDiv.textContent = `❌ Error loading tool data: ${error.message}`;
+                messageDiv.style.color = 'var(--pico-color-red-500)';
+                form.style.display = 'none';
+            }
+        }
+
+        // Form submission logic
+        form.addEventListener('submit', async function(event) {
+            event.preventDefault();
+            submitBtn.setAttribute('aria-busy', 'true');
+
+            const updatedData = {
+                name: nameInput.value,
+                description: descriptionInput.value,
+                tags: tagsInput.value.split(',').map(tag => tag.trim()).filter(tag => tag !== ''),
+                filepath: filepathInput.value // Keep the original filepath
+            };
+
+            const response = await fetch(`/api/tools/${toolId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(updatedData)
+            });
+
+            if (response.ok) {
+                const updatedTool = await response.json();
+                messageDiv.innerHTML = `✅ Tool '<strong>${updatedTool.name}</strong>' updated successfully. <a href="/">Go back to list</a>.`;
+                messageDiv.style.color = 'var(--pico-color-green-500)';
+            } else {
+                const errorData = await response.json();
+                messageDiv.textContent = `❌ Error: ${errorData.detail || 'An unknown error occurred.'}`;
+                messageDiv.style.color = 'var(--pico-color-red-500)';
+            }
+            submitBtn.removeAttribute('aria-busy');
+        });
+
+        // Initial load
+        loadToolData();
+    </script>
+{% endblock %}

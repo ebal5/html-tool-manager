@@ -28,6 +28,10 @@ async def read_root(request: Request):
 async def create_tool_page(request: Request):
     return templates.TemplateResponse("create.html", {"request": request})
 
+@app.get("/tools/edit/{tool_id}", response_class=HTMLResponse)
+async def edit_tool_page(request: Request, tool_id: int):
+    return templates.TemplateResponse("edit.html", {"request": request, "tool_id": tool_id})
+
 @app.get("/tools/view/{tool_id}", response_class=HTMLResponse)
 async def view_tool_page(request: Request, tool_id: int):
     # TODO: tool_id からツール情報を取得し、そのツールのHTMLを表示するロジック

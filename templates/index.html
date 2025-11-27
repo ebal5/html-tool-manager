@@ -79,7 +79,11 @@
                         <td>${tool.name}</td>
                         <td>${tool.description || ''}</td>
                         <td>${tagsHtml}</td>
-                        <td><a href="/tools/view/${tool.id}" role="button" class="secondary outline">View</a></td>
+                        <td><div class="grid">
+                <a href="/tools/view/${tool.id}" role="button" class="secondary outline">View</a>
+                <a href="/tools/edit/${tool.id}" role="button" class="secondary">Edit</a>
+                <button class="contrast" onclick="deleteTool(${tool.id}, this)">Delete</button>
+            </div></td>
                     `;
                     tbody.appendChild(tr);
                 });
@@ -102,5 +106,29 @@
 
         // Initial load
         fetchTools();
+
+        function deleteTool(toolId, buttonElement) {
+            if (confirm(`Are you sure you want to delete tool ID: ${toolId}?`)) {
+                buttonElement.setAttribute('aria-busy', 'true');
+                fetch(`/api/tools/${toolId}`, {
+                    method: 'DELETE',
+                })
+                .then(response => {
+                    if (response.ok) {
+                        // Remove the row from the table
+                        const row = buttonElement.closest('tr');
+                        row.parentNode.removeChild(row);
+                    } else {
+                        alert('Failed to delete the tool.');
+                        buttonElement.removeAttribute('aria-busy');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while deleting the tool.');
+                    buttonElement.removeAttribute('aria-busy');
+                });
+            }
+        }
     </script>
 {% endblock %}
