@@ -61,14 +61,14 @@
 
 1.  **Dockerイメージのビルド:**
     ```bash
-    docker build -t html-tool-manager .
+    docker build -t html-tool-manager:0.1.0 .
     ```
 
 2.  **Dockerコンテナの実行:**
-    このコマンドは、コンテナのポート80をホストのポート8000にマッピングします。また、`html-tool-manager-data` と `html-tool-manager-db` という名前のボリュームを作成し、アップロードされたツールファイルとSQLiteデータベースをそれぞれ永続化させます。
+    このコマンドは、コンテナのポート80をホストのポート8888にマッピングします。また、`html-tool-manager-data` と `html-tool-manager-db` という名前のボリュームを作成し、アップロードされたツールファイルとSQLiteデータベースをそれぞれ永続化させます。
     ```bash
-    docker run -d -p 8000:80 -v html-tool-manager-data:/app/static/tools -v html-tool-manager-db:/app --name html-tool-manager-app html-tool-manager
+    docker run -d -p 8888:80 -v html-tool-manager-data:/app/static/tools -v html-tool-manager-db:/app --name html-tool-manager-app html-tool-manager:0.1.0
     ```
-    - アプリケーションは `http://127.0.0.1:8000` で利用可能になります。
+    - アプリケーションは `http://127.0.0.1:8888` で利用可能になります。
     - データベースファイル (`sql_app.db`) は `html-tool-manager-db` ボリュームに永続化されます。
     - アップロードされたツールは `html-tool_manager-data` ボリュームに永続化されます。

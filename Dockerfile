@@ -15,10 +15,11 @@ RUN uv pip install --system --no-cache .
 
 # 5. アプリケーションのソースコードをコピー
 COPY ./src ./src
-COPY ./static ./static # フロントエンドファイルをコピー
-COPY ./templates ./templates # テンプレートファイルをコピー
+COPY ./static ./static
+COPY ./templates ./templates
 
-# 6. アプリケーションを起動するコマンド
-#    FastAPIアプリケーションが `src.html_tool_manager.main` の `app` オブジェクトであると仮定
-#    uvicorn は `src` ディレクトリがPYTHONPATHに含まれていなくても、モジュールパスとして認識できるように `src.` をつけて呼び出す
-CMD ["uvicorn", "src.html_tool_manager.main:app", "--host", "0.0.0.0", "--port", "80"]
+# 6. PYTHONPATHを設定して、srcディレクトリをインポートパスに追加
+ENV PYTHONPATH=/app/src
+
+# 7. アプリケーションを起動するコマンド
+CMD ["uvicorn", "html_tool_manager.main:app", "--host", "0.0.0.0", "--port", "80"]
