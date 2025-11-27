@@ -56,14 +56,24 @@
                 isPastedContent = originalFilepath.startsWith('static/tools/');
                 
                 if (isPastedContent) {
-                    // Fetch the HTML content and display a textarea
+                    // Fetch the HTML content and display a textarea safely
                     sourceSection.innerHTML = '<p aria-busy="true">Loading content...</p>';
                     const htmlResponse = await fetch(`/${originalFilepath}`);
                     const htmlContent = await htmlResponse.text();
-                    sourceSection.innerHTML = `
-                        <label for="html_content">HTML Content</label>
-                        <textarea id="html_content" name="html_content" rows="10">${htmlContent}</textarea>
-                    `;
+                    
+                    sourceSection.innerHTML = ''; // Clear loading message
+                    const label = document.createElement('label');
+                    label.setAttribute('for', 'html_content');
+                    label.textContent = 'HTML Content';
+
+                    const textarea = document.createElement('textarea');
+                    textarea.id = 'html_content';
+                    textarea.name = 'html_content';
+                    textarea.rows = 10;
+                    textarea.value = htmlContent; // Use .value to set content safely
+
+                    sourceSection.appendChild(label);
+                    sourceSection.appendChild(textarea);
                 } else {
                     // Display a read-only filepath
                     sourceSection.innerHTML = `
