@@ -74,17 +74,37 @@
 
                 tools.forEach(tool => {
                     const tr = document.createElement('tr');
-                    const tagsHtml = tool.tags.map(tag => `<code>${tag}</code>`).join(' ');
-                    tr.innerHTML = `
-                        <td>${tool.name}</td>
-                        <td>${tool.description || ''}</td>
-                        <td>${tagsHtml}</td>
-                        <td><div class="grid">
-                <a href="/tools/view/${tool.id}" role="button" class="secondary outline">View</a>
-                <a href="/tools/edit/${tool.id}" role="button" class="secondary">Edit</a>
-                <button class="contrast" onclick="deleteTool(${tool.id}, this)">Delete</button>
-            </div></td>
-                    `;
+
+                    const nameCell = document.createElement('td');
+                    nameCell.textContent = tool.name;
+
+                    const descCell = document.createElement('td');
+                    descCell.textContent = tool.description || '';
+
+                    const tagsCell = document.createElement('td');
+                    if (tool.tags && tool.tags.length > 0) {
+                        tool.tags.forEach((tag, index) => {
+                            const code = document.createElement('code');
+                            code.textContent = tag;
+                            tagsCell.appendChild(code);
+                            if (index < tool.tags.length - 1) {
+                                tagsCell.appendChild(document.createTextNode(' ')); // for spacing
+                            }
+                        });
+                    }
+
+                    const actionsCell = document.createElement('td');
+                    actionsCell.innerHTML = `<div class="grid">
+                        <a href="/tools/view/${tool.id}" role="button" class="secondary outline">View</a>
+                        <a href="/tools/edit/${tool.id}" role="button" class="secondary">Edit</a>
+                        <button class="contrast" onclick="deleteTool(${tool.id}, this)">Delete</button>
+                    </div>`;
+
+                    tr.appendChild(nameCell);
+                    tr.appendChild(descCell);
+                    tr.appendChild(tagsCell);
+                    tr.appendChild(actionsCell);
+
                     tbody.appendChild(tr);
                 });
 

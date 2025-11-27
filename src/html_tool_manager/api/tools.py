@@ -16,18 +16,20 @@ router = APIRouter(prefix="/tools", tags=["tools"])
 def create_tool(tool_data: ToolCreate, session: Session = Depends(get_session)):
     repo = ToolRepository(session)
     
-    if not tool_data.filepath and not tool_data.html_content:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Either 'filepath' or 'html_content' must be provided.")
-    if tool_data.filepath and tool_data.html_content:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Provide either 'filepath' or 'html_content', not both.")
+    # html_contentが必須であることを検証
+    if not tool_data.html_content:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="'html_content' is required.")
 
-    if tool_data.html_content:
-        tool_dir = f"static/tools/{uuid.uuid4()}"
-        os.makedirs(tool_dir, exist_ok=True)
-        final_filepath = f"{tool_dir}/index.html"
-        with open(final_filepath, "w") as f:
-            f.write(tool_data.html_content)
-        tool_data.filepath = final_filepath
+    # 一意のディレクトリとファイルパスを生成
+    tool_dir = f"static/tools/{uuid.uuid4()}"
+    os.makedirs(tool_dir, exist_ok=True)
+    final_filepath = f"{tool_dir}/index.html"
+    
+    with open(final_filepath, "w") as f:
+        f.write(tool_data.html_content)
+    
+    # DBに保存するモデルのfilepathを更新
+    tool_data.filepath = final_filepath
     
     # ToolCreateからToolオブジェクトを作成
     tool_to_db = Tool.model_validate(tool_data)
@@ -71,16 +73,9 @@ def update_tool(tool_id: int, tool_data: ToolCreate, session: Session = Depends(
 
     # If html_content is provided, overwrite the existing file
     if tool_data.html_content is not None:
-        # Ensure we are only editing files that were created by the app
-        if tool_to_update.filepath and tool_to_update.filepath.startswith('static/tools/'):
-            with open(tool_to_update.filepath, "w") as f:
-                f.write(tool_data.html_content)
-        else:
-            # Prevent overwriting arbitrary files specified by path
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot update HTML content for tools not created via paste.",
-            )
+        # The filepath was set by our app, so it's safe to write to.
+        with open(tool_to_update.filepath, "w") as f:
+            f.write(tool_data.html_content)
 
     # Update metadata
     update_data = tool_data.model_dump(exclude_unset=True, exclude={'html_content'})

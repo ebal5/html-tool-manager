@@ -32,15 +32,25 @@
 
                 toolNameEl.textContent = tool.name;
                 toolDescriptionEl.textContent = tool.description || '';
-                toolTagsEl.innerHTML = tool.tags.map(tag => `<code>${tag}</code>`).join(' ');
+                
+                // Safely create and append tags
+                toolTagsEl.innerHTML = ''; // Clear previous tags
+                if (tool.tags && tool.tags.length > 0) {
+                    tool.tags.forEach((tag, index) => {
+                        const code = document.createElement('code');
+                        code.textContent = tag;
+                        toolTagsEl.appendChild(code);
+                        if (index < tool.tags.length - 1) {
+                            toolTagsEl.appendChild(document.createTextNode(' '));
+                        }
+                    });
+                }
 
                 // ここでツール本体をロードする
-                // filepath がローカルの静的ファイルであれば iframe で表示
-                // TODO: フォルダ構成のツールや外部URLへの対応
-                if (tool.filepath.startsWith('static/')) {
+                if (tool.filepath && tool.filepath.startsWith('static/tools/')) {
                     toolContentEl.innerHTML = `<iframe src="/${tool.filepath}" style="width: 100%; height: 60vh; border: 1px solid var(--pico-muted-border-color);"></iframe>`;
                 } else {
-                     toolContentEl.innerHTML = `<p>Cannot display this tool type. File path: <code>${tool.filepath}</code></p>`;
+                     toolContentEl.innerHTML = `<p>Cannot display this tool type. Invalid file path provided.</p>`;
                 }
 
             } catch (error) {
