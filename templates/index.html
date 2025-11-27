@@ -18,6 +18,22 @@
         </div>
     </div>
 
+    <div style="margin-bottom: 1rem;">
+        <button id="toggle-tool-operations" class="secondary outline">ツール操作を表示/非表示</button>
+    </div>
+
+    <div id="tool-operations-container" class="hidden" style="margin-bottom: 1rem;">
+        <div class="grid" style="grid-template-columns: 1fr 1fr;">
+            <div>
+                <button id="export-selected-btn" class="secondary outline">選択したツールをエクスポート</button>
+            </div>
+            <div id="import-section" style="display: flex; gap: 1rem;">
+                <input type="file" id="import-file-input" accept=".pack" style="flex-grow: 1;">
+                <button id="import-btn" class="primary outline">インポート</button>
+            </div>
+        </div>
+    </div>
+
     <div id="tool-list-container">
         <p aria-busy="true">Loading tools...</p>
     </div>
@@ -31,151 +47,40 @@
         }
         .action-grid {
             display: flex;
-            align-items: center; /* 垂直中央揃えに戻す */
+            align-items: center;
             gap: 0.5rem;
         }
         .action-grid > a, .action-grid > details {
-            margin-bottom: 0; /* aとdetailsの両方に適用 */
+            margin-bottom: 0;
         }
         .action-grid > a, .action-grid .dropdown summary {
-            height: 44px; /* 高さを明示的に指定 (Picoのinputの高さに合わせる) */
+            height: 44px;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 0 0.75rem; /* 上下のpaddingを0にして、heightとalign-itemsで中央揃え */
+            padding: 0 0.75rem;
+        }
+
+        /* ツール操作UIの表示/非表示 */
+        #tool-operations-container.hidden {
+            display: none;
+        }
+
+        /* チェックボックス列の表示/非表示 */
+        .checkbox-column {
+            width: 1%; /* チェックボックスの幅を小さくする */
+            white-space: nowrap;
+        }
+        .checkbox-column.hidden {
+            display: none;
+        }
+
+        /* インポートボタンの幅調整 */
+        #import-section {
+            min-width: 150px; /* インポートボタンとファイル入力が収まるように調整 */
+        }
+        #import-section #import-btn {
+            min-width: fit-content; /* テキストが収まる最小幅 */
         }
     </style>
-
-    <script>
-        const searchBox = document.getElementById('search-box');
-        const sortSelect = document.getElementById('sort-select');
-        const container = document.getElementById('tool-list-container');
-        let debounceTimer;
-
-        async function fetchTools() {
-            container.innerHTML = '<p aria-busy="true">Loading tools...</p>';
-            const query = searchBox.value;
-            const sort = sortSelect.value;
-            
-            const params = new URLSearchParams();
-            if (query) params.append('q', query);
-            if (sort) params.append('sort', sort);
-            
-            try {
-                const response = await fetch(`/api/tools/?${params.toString()}`);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const tools = await response.json();
-
-                if (tools.length === 0) {
-                    container.innerHTML = '<p>No tools found.</p>';
-                    return;
-                }
-
-                const table = document.createElement('table');
-                table.innerHTML = `
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Description</th>
-                            <th>Tags</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                `;
-                const tbody = table.querySelector('tbody');
-
-                tools.forEach(tool => {
-                    const tr = document.createElement('tr');
-
-                    const nameCell = document.createElement('td');
-                    nameCell.textContent = tool.name;
-
-                    const descCell = document.createElement('td');
-                    descCell.textContent = tool.description || '';
-
-                    const tagsCell = document.createElement('td');
-                    if (tool.tags && tool.tags.length > 0) {
-                        tool.tags.forEach((tag, index) => {
-                            const code = document.createElement('code');
-                            code.textContent = tag;
-                            tagsCell.appendChild(code);
-                            if (index < tool.tags.length - 1) {
-                                tagsCell.appendChild(document.createTextNode(' ')); // for spacing
-                            }
-                        });
-                    }
-
-                    const actionsCell = document.createElement('td');
-                    actionsCell.innerHTML = `<div class="action-grid">
-                        <a href="/tools/view/${tool.id}" role="button" class="secondary outline">Use</a>
-                        <details class="dropdown">
-                            <summary role="button" class="contrast outline">⋮</summary>
-                            <ul style="position: absolute; z-index: 1;">
-                                <li><a href="/tools/edit/${tool.id}">Edit</a></li>
-                                <li><a href="#" onclick="event.preventDefault(); deleteTool(${tool.id}, this)">Delete</a></li>
-                            </ul>
-                        </details>
-                    </div>`;
-
-                    tr.appendChild(nameCell);
-                    tr.appendChild(descCell);
-                    tr.appendChild(tagsCell);
-                    tr.appendChild(actionsCell);
-
-                    tbody.appendChild(tr);
-                });
-
-                container.innerHTML = '';
-                container.appendChild(table);
-
-            } catch (error) {
-                container.innerHTML = `<p style="color: var(--pico-color-red-500);">Failed to load tools. Please try again later.</p>`;
-                console.error('Error fetching tools:', error);
-            }
-        }
-
-        searchBox.addEventListener('input', () => {
-            clearTimeout(debounceTimer);
-
-            const query = searchBox.value.trim();
-            // クエリがコロンで終わっている場合は、まだ入力途中なのでリクエストを送らない
-            if (query.endsWith(':')) {
-                return;
-            }
-
-            debounceTimer = setTimeout(fetchTools, 300); // 300msのデバウンス
-        });
-
-        sortSelect.addEventListener('change', fetchTools);
-
-        // Initial load
-        fetchTools();
-
-        function deleteTool(toolId, buttonElement) {
-            if (confirm(`Are you sure you want to delete tool ID: ${toolId}?`)) {
-                buttonElement.setAttribute('aria-busy', 'true');
-                fetch(`/api/tools/${toolId}`, {
-                    method: 'DELETE',
-                })
-                .then(response => {
-                    if (response.ok) {
-                        // Remove the row from the table
-                        const row = buttonElement.closest('tr');
-                        row.parentNode.removeChild(row);
-                    } else {
-                        alert('Failed to delete the tool.');
-                        buttonElement.removeAttribute('aria-busy');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('An error occurred while deleting the tool.');
-                    buttonElement.removeAttribute('aria-busy');
-                });
-            }
-        }
-    </script>
 {% endblock %}
