@@ -31,15 +31,18 @@
         }
         .action-grid {
             display: flex;
-            align-items: stretch; /* 高さを揃える */
+            align-items: center; /* 垂直中央揃えに戻す */
             gap: 0.5rem;
         }
+        .action-grid > a, .action-grid > details {
+            margin-bottom: 0; /* aとdetailsの両方に適用 */
+        }
         .action-grid > a, .action-grid .dropdown summary {
-            margin-bottom: 0;
+            height: 44px; /* 高さを明示的に指定 (Picoのinputの高さに合わせる) */
             display: flex;
-            align-items: center; /* テキストを垂直方向に中央揃え */
-            justify-content: center; /* テキストを水平方向に中央揃え */
-            padding: 0.5rem 0.75rem; /* paddingを調整してサイズを統一 */
+            align-items: center;
+            justify-content: center;
+            padding: 0 0.75rem; /* 上下のpaddingを0にして、heightとalign-itemsで中央揃え */
         }
     </style>
 
@@ -107,7 +110,7 @@
 
                     const actionsCell = document.createElement('td');
                     actionsCell.innerHTML = `<div class="action-grid">
-                        <a href="/tools/view/${tool.id}" role="button" class="secondary outline">View</a>
+                        <a href="/tools/view/${tool.id}" role="button" class="secondary outline">Use</a>
                         <details class="dropdown">
                             <summary role="button" class="contrast outline">⋮</summary>
                             <ul style="position: absolute; z-index: 1;">
