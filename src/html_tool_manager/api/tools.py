@@ -14,6 +14,7 @@ router = APIRouter(prefix="/tools", tags=["tools"])
 
 @router.post("/", response_model=ToolRead, status_code=status.HTTP_201_CREATED)
 def create_tool(tool_data: ToolCreate, session: Session = Depends(get_session)):
+    """新しいツールを作成します。"""
     repo = ToolRepository(session)
     
     # html_contentが必須であることを検証
@@ -39,11 +40,12 @@ def create_tool(tool_data: ToolCreate, session: Session = Depends(get_session)):
 @router.get("/", response_model=List[ToolRead])
 def read_tools(
     session: Session = Depends(get_session),
-    q: str = Query(None, description="Search query with optional prefixes like 'name:', 'desc:', 'tag:'"),
-    sort: SortOrder = Query(SortOrder.RELEVANCE, description="Sort order"),
+    q: str = Query(None, description="検索クエリ（例: 'name:', 'desc:', 'tag:'）"),
+    sort: SortOrder = Query(SortOrder.RELEVANCE, description="ソート順"),
     offset: int = 0,
     limit: int = 100,
 ):
+    """ツールの一覧を取得、または検索します。"""
     repo = ToolRepository(session)
     if q:
         parsed_query = parse_query(q)
@@ -56,6 +58,7 @@ def read_tools(
 
 @router.get("/{tool_id}", response_model=ToolRead)
 def read_tool(tool_id: int, session: Session = Depends(get_session)):
+    """IDを指定して単一のツールを取得します。"""
     repo = ToolRepository(session)
     db_tool = repo.get_tool(tool_id)
     if not db_tool:
@@ -66,18 +69,19 @@ def read_tool(tool_id: int, session: Session = Depends(get_session)):
 
 @router.put("/{tool_id}", response_model=ToolRead)
 def update_tool(tool_id: int, tool_data: ToolCreate, session: Session = Depends(get_session)):
+    """既存のツールを更新します。"""
     repo = ToolRepository(session)
     tool_to_update = repo.get_tool(tool_id)
     if not tool_to_update:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tool not found")
 
-    # If html_content is provided, overwrite the existing file
+    # html_contentが提供された場合は、既存のファイルを上書き
     if tool_data.html_content is not None:
-        # The filepath was set by our app, so it's safe to write to.
+        # アプリによって作成された安全なパスであることを前提とする
         with open(tool_to_update.filepath, "w") as f:
             f.write(tool_data.html_content)
 
-    # Update metadata
+    # メタデータを更新
     update_data = tool_data.model_dump(exclude_unset=True, exclude={'html_content'})
     tool_to_update.sqlmodel_update(update_data)
     
@@ -86,8 +90,10 @@ def update_tool(tool_id: int, tool_data: ToolCreate, session: Session = Depends(
 
 @router.delete("/{tool_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_tool(tool_id: int, session: Session = Depends(get_session)):
+    """ツールを削除します。"""
     repo = ToolRepository(session)
     tool = repo.delete_tool(tool_id)
     if not tool:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tool not found")
+    # 204 No Contentのため、このレスポンスボディは実際にはクライアントに送信されない
     return {"message": "Tool deleted successfully"}

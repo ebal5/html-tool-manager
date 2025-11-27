@@ -9,10 +9,11 @@ from html_tool_manager.api.tools import router as tools_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # on startup
+    """アプリケーションのライフサイクルイベントを管理します。"""
+    # 起動時
     create_db_and_tables()
     yield
-    # on shutdown
+    # 終了時
     pass
 
 app = FastAPI(lifespan=lifespan)
@@ -20,25 +21,27 @@ app = FastAPI(lifespan=lifespan)
 # 静的ファイルの提供
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Jinja2Templatesの設定
+# Jinja2テンプレートの設定
 templates = Jinja2Templates(directory="templates")
 
-app.include_router(tools_router, prefix="/api") # APIのパスを/api以下に移動
+app.include_router(tools_router, prefix="/api")
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
+    """ツール一覧ページ（ホームページ）をレンダリングします。"""
     return templates.TemplateResponse("index.html", {"request": request})
 
 @app.get("/tools/create", response_class=HTMLResponse)
 async def create_tool_page(request: Request):
+    """ツール作成ページをレンダリングします。"""
     return templates.TemplateResponse("create.html", {"request": request})
 
 @app.get("/tools/edit/{tool_id}", response_class=HTMLResponse)
 async def edit_tool_page(request: Request, tool_id: int):
+    """ツール編集ページをレンダリングします。"""
     return templates.TemplateResponse("edit.html", {"request": request, "tool_id": tool_id})
 
 @app.get("/tools/view/{tool_id}", response_class=HTMLResponse)
 async def view_tool_page(request: Request, tool_id: int):
-    # TODO: tool_id からツール情報を取得し、そのツールのHTMLを表示するロジック
-    #       現時点では仮の表示
+    """ツール表示ページをレンダリングします。"""
     return templates.TemplateResponse("tool_viewer.html", {"request": request, "tool_id": tool_id})

@@ -1,74 +1,74 @@
-# HTML Tool Manager
+# HTMLツールマネージャー
 
-A simple web application to manage and host a collection of single-page HTML/JS tools. This project was developed as a collaboration between a human user and an AI assistant.
+単一ページのHTML/JSツールを管理・ホストするためのシンプルなWebアプリケーションです。このプロジェクトは、人間とAIアシスタントの共同作業によって開発されました。
 
-## Features
+## 主な機能
 
-- **Tool Management:** Create, read, update, and delete tools via a web interface.
-- **Content Creation:** Create new tools by directly pasting HTML content.
-- **Live Hosting:** "Use" a tool to render it within an `iframe`.
-- **Advanced Search:** A powerful search bar supports:
-  - General text search across name, description, and tags.
-  - Prefix-based search (e.g., `name:my-tool`, `desc:calculator`, `tag:json`).
-  - Phrase search using double quotes (e.g., `name:"My Awesome Tool"`).
-- **Sorting:** Sort the tool list by relevance, name, or update date.
-- **Modern UI:** A clean and responsive user interface built with [Pico.css](https://picocss.com/).
-- **Containerized:** A `Dockerfile` is included for easy containerization and deployment.
+- **ツール管理:** Webインターフェースを介したツールの作成、閲覧、更新、削除（CRUD）。
+- **コンテンツ作成:** HTMLコンテンツを直接貼り付けて新しいツールを作成。
+- **ライブホスティング:** 「Use」ボタンでツールを`iframe`内にレンダリングして使用。
+- **高度な検索:** 強力な検索バーは以下をサポートします:
+  - 名前、説明、タグを横断した全文検索。
+  - プレフィックスベースの検索 (例: `name:my-tool`, `desc:calculator`, `tag:json`)。
+  - ダブルクォートによるフレーズ検索 (例: `name:"My Awesome Tool"`)。
+- **ソート:** 関連度、名前、更新日でツール一覧を並び替え。
+- **モダンなUI:** [Pico.css](https://picocss.com/) で構築された、クリーンでレスポンシブなユーザーインターフェース。
+- **コンテナ化:** `Dockerfile` が含まれており、簡単なコンテナ化とデプロイが可能。
 
-## Tech Stack
+## 技術スタック
 
-- **Backend:** Python 3.12+ with [FastAPI](https://fastapi.tiangolo.com/)
-- **Database:** [SQLite](https://www.sqlite.org/index.html) (with FTS5 for full-text search)
+- **バックエンド:** Python 3.12+ と [FastAPI](https://fastapi.tiangolo.com/)
+- **データベース:** [SQLite](https://www.sqlite.org/index.html) (全文検索のためのFTS5拡張を含む)
 - **ORM:** [SQLModel](https://sqlmodel.tiangolo.com/)
-- **Frontend:** Plain HTML, CSS, and JavaScript, styled with [Pico.css](https://picocss.com/)
-- **Python Environment:** `uv` for package and virtual environment management
-- **Task Runner:** `poethepoet` for running development tasks
+- **フロントエンド:** [Pico.css](https://picocss.com/) でスタイリングされた素のHTML, CSS, JavaScript
+- **Python環境:** `uv` によるパッケージと仮想環境の管理
+- **タスクランナー:** `poethepoet` による開発タスクの実行
 
-## Getting Started
+## セットアップ方法
 
-### Prerequisites
+### 事前準備
 
 - Python 3.12+
-- `uv` (can be installed via `pip`, `pipx`, or your system's package manager)
+- `uv` (`pip`, `pipx`, またはシステムのパッケージマネージャーでインストール可能)
 
-### Development Environment
+### 開発環境
 
-1.  **Clone the repository:**
+1.  **リポジトリをクローン:**
     ```bash
-    git clone <repository-url>
+    git clone <リポジトリURL>
     cd html_tool_manager
     ```
 
-2.  **Create virtual environment and install dependencies:**
-    `uv` will create a `.venv` directory and install all required packages.
+2.  **仮想環境の作成と依存関係のインストール:**
+    `uv` が `.venv` ディレクトリを作成し、必要なパッケージをすべてインストールします。
     ```bash
     uv pip install -e .[dev]
     ```
 
-3.  **Run the development server:**
-    This command uses `poethepoet` to run `uvicorn` with hot-reloading enabled.
+3.  **開発サーバーの実行:**
+    このコマンドは `poethepoet` を使い、ホットリロードを有効にして `uvicorn` を実行します。
     ```bash
     uv run poe dev
     ```
-    The application will be available at `http://127.0.0.1:8000`.
+    アプリケーションは `http://127.0.0.1:8000` で利用可能になります。
 
-4.  **Run tests:**
+4.  **テストの実行:**
     ```bash
     uv run pytest
     ```
 
 ### Docker
 
-1.  **Build the Docker image:**
+1.  **Dockerイメージのビルド:**
     ```bash
     docker build -t html-tool-manager .
     ```
 
-2.  **Run the Docker container:**
-    This command maps the container's port 80 to the host's port 8000. It also creates a volume named `html-tool-manager-data` to persist the SQLite database and uploaded tool files.
+2.  **Dockerコンテナの実行:**
+    このコマンドは、コンテナのポート80をホストのポート8000にマッピングします。また、`html-tool-manager-data` と `html-tool-manager-db` という名前のボリュームを作成し、アップロードされたツールファイルとSQLiteデータベースをそれぞれ永続化させます。
     ```bash
     docker run -d -p 8000:80 -v html-tool-manager-data:/app/static/tools -v html-tool-manager-db:/app --name html-tool-manager-app html-tool-manager
     ```
-    - The application will be available at `http://127.0.0.1:8000`.
-    - The database file (`sql_app.db`) will be persisted in the `html-tool-manager-db` volume.
-    - Uploaded tools will be persisted in the `html-tool-manager-data` volume.
+    - アプリケーションは `http://127.0.0.1:8000` で利用可能になります。
+    - データベースファイル (`sql_app.db`) は `html-tool-manager-db` ボリュームに永続化されます。
+    - アップロードされたツールは `html-tool_manager-data` ボリュームに永続化されます。

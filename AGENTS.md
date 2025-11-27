@@ -1,21 +1,21 @@
-# About This Project
+# このプロジェクトについて
 
-This project was developed by a human user interacting with a large language model (LLM) assistant. The development process involved a series of conversational turns, where the user provided initial requirements, gave feedback, and directed the course of development, while the LLM assistant provided code, technical suggestions, and implemented the features.
+このプロジェクトは、人間と大規模言語モデル（LLM）アシスタントとの対話を通じて開発されました。開発プロセスは一連の対話ターンで構成され、ユーザーが初期要件の提示、フィードバック、開発方針の指示を行い、LLMアシスタントがコード、技術的提案、機能実装を提供しました。
 
-## Development Timeline
+## 開発のタイムライン
 
-1.  **Initial Scoping & Setup:** The project began with a request to build a simple manager for HTML/JS tools. The initial phase involved a Q&A session to define requirements, followed by the setup of a Git repository and a basic project structure using Python and FastAPI.
+1.  **初期スコープとセットアップ:** プロジェクトは、HTML/JSツールを管理するためのシンプルなマネージャーを構築する要求から始まりました。初期フェーズでは、要件を定義するための質疑応答セッションが行われ、その後、Gitリポジトリのセットアップと、PythonおよびFastAPIを使用した基本的なプロジェクト構造の作成が行われました。
 
-2.  **Core Functionality:** The basic CRUD (Create, Read, Update, Delete) API for managing tools was implemented using `FastAPI`, `SQLModel`, and `SQLite`. A simple HTML frontend was also created to interact with the API.
+2.  **コア機能の実装:** `FastAPI`、`SQLModel`、`SQLite`を使用して、ツールを管理するための基本的なCRUD（作成、読み取り、更新、削除）APIが実装されました。APIと対話するためのシンプルなHTMLフロントエンドも作成されました。
 
-3.  **Feature Enhancement:**
-    *   **Search & Sort:** A sophisticated search functionality with prefix support (`name:`, `tag:`) and full-text search capabilities (using SQLite's FTS5 extension) was added. Sorting options were also implemented.
-    *   **UI/UX Improvements:** The initial barebones design was improved using the `Pico.css` framework. User feedback led to further refinements, such as grouping action buttons into a dropdown menu and adjusting button styles.
-    *   **Content Management:** The ability to create a tool by pasting HTML content directly was added, and the corresponding edit functionality was implemented.
+3.  **機能強化:**
+    *   **検索とソート:** プレフィックス（`name:`、`tag:`）をサポートする高度な検索機能と、全文検索機能（SQLiteのFTS5拡張を使用）が追加されました。ソートオプションも実装されました。
+    *   **UI/UXの改善:** 当初の簡素なデザインは、`Pico.css`フレームワークを使用して改善されました。ユーザーのフィードバックに基づき、アクションボタンをドロップダウンメニューにまとめる、ボタンスタイルを調整するなど、さらなる改良が行われました。
+    *   **コンテンツ管理:** HTMLコンテンツを直接貼り付けてツールを作成する機能が追加され、対応する編集機能も実装されました。
 
-4.  **Quality Assurance & Hardening:**
-    *   **Testing:** A test suite was created using `pytest` to verify the functionality of the search API and prevent regressions. The test setup evolved to use an in-memory database for reliability.
-    *   **Vulnerability Review:** A security review was conducted, leading to fixes for potential Path Traversal and Cross-Site Scripting (XSS) vulnerabilities.
-    *   **Bug Fixing:** Throughout the process, bugs identified by the user or through testing (e.g., FTS search not matching prefixes, database errors during testing) were iteratively debugged and resolved.
+4.  **品質保証と堅牢化:**
+    *   **テスト:** `pytest`を使用してテストスイートが作成され、検索APIの機能性を検証し、将来的なリグレッション（機能低下）を防ぎます。テストのセットアップは、信頼性のためにインメモリデータベースを使用するように進化しました。
+    *   **脆弱性レビュー:** セキュリティレビューが実施され、潜在的なパス・トラバーサルやクロスサイトスクリプティング（XSS）の脆弱性に対する修正が行われました。
+    *   **バグ修正:** 開発プロセスを通じて、ユーザーからの指摘やテストによって特定されたバグ（例: FTS検索がプレフィックスに一致しない、テスト中のデータベースエラーなど）が、繰り返しデバッグされ、解決されました。
 
-This file serves as a record of the collaborative and iterative nature of modern software development with AI assistants.
+このファイルは、AIアシスタントとの共同作業による、現代の反復的なソフトウェア開発の記録として機能します。

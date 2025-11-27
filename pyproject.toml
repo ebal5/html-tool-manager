@@ -16,7 +16,25 @@ dev = [
     "pytest",
     "poethepoet",
     "httpx",
+    "ruff",
 ]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+select = ["E", "F", "W", "I", "N", "D"]
+
+[tool.ruff.lint]
+ignore = [
+    "D100", # Missing docstring in public module
+    "D104", # Missing docstring in public package
+    "D105", # Missing docstring in public method
+    "D107", # Missing docstring in __init__
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
 
 [tool.poe.tasks.dev]
 cmd = "uvicorn html_tool_manager.main:app --reload"

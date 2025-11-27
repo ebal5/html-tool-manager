@@ -1,21 +1,21 @@
 import re
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
-# Regex to find 'key:"value"' or 'key:value' patterns and standalone terms
+# 'key:"value"' または 'key:value' 形式のパターンと、独立した単語を見つけるための正規表現
 QUERY_REGEX = re.compile(
     r'(\w+):"([^"]+)"|(\w+):(\S+)|"([^"]+)"|(\S+)'
 )
 
 def parse_query(query_str: str) -> Dict[str, List[str]]:
     """
-    Parses a search query string into a structured dictionary.
+    検索クエリ文字列を構造化された辞書にパースします。
 
     Args:
-        query_str: The raw search query string.
+        query_str: 生の検索クエリ文字列。
 
     Returns:
-        A dictionary with keys like 'name', 'desc', 'tag', and 'term'
-        containing lists of parsed values.
+        'name', 'desc', 'tag', 'term' などのキーを持つ辞書。
+        各キーにはパースされた値のリストが含まれます。
     """
     parsed: Dict[str, List[str]] = {
         "name": [],

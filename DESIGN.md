@@ -1,66 +1,66 @@
-# Design Document: HTML Tool Manager
+# デザインドキュメント: HTMLツールマネージャー
 
-## 1. Introduction
+## 1. はじめに
 
-This document outlines the design principles, visual style, and component architecture for the HTML Tool Manager application. The goal is to maintain a clean, consistent, and user-friendly interface.
+このドキュメントは、HTMLツールマネージャーアプリケーションのデザイン原則、ビジュアルスタイル、コンポーネントアーキテクチャの概要をまとめたものです。目標は、クリーンで一貫性があり、ユーザーフレンドリーなインターフェースを維持することです。
 
-The application's core concept is a no-frills internal dashboard for developers to quickly manage and use single-page HTML/JS tools. The design prioritizes functionality and ease of use over complex visual flair.
+このアプリケーションのコアコンセプトは、開発者が単一ページのHTML/JSツールを迅速に管理・使用するための、無駄な装飾を省いた内部向けダッシュボードです。デザインは、複雑な視覚効果よりも機能性と使いやすさを優先しています。
 
-## 2. Design Principles
+## 2. デザイン原則
 
-- **Simplicity:** The UI is built upon a class-less CSS framework ([Pico.css](https://picocss.com/)) to keep the HTML structure clean and semantic. We avoid complex, custom CSS wherever possible.
-- **Consistency:** All pages share a common layout, navigation structure, and component styling. Buttons, forms, and tables look and behave predictably across the application.
-- **Responsiveness:** The design is fluid and adapts gracefully to various screen sizes, from mobile devices to large desktop monitors, thanks to Pico.css's responsive grid system and components.
+- **シンプルさ:** UIはクラスレスCSSフレームワークである [Pico.css](https://picocss.com/) を基盤に構築されており、HTML構造をクリーンで意味的に保ちます。可能な限り、複雑なカスタムCSSは避けています。
+- **一貫性:** すべてのページで共通のレイアウト、ナビゲーション構造、コンポーネントスタイルを共有します。ボタン、フォーム、テーブルは、アプリケーション全体で予測可能な見た目と挙動をします。
+- **応答性 (レスポンシブデザイン):** Pico.cssのレスポンシブグリッドシステムとコンポーネントにより、デザインは流動的で、モバイルデバイスから大型のデスクトップモニターまで、さまざまな画面サイズに適切に対応します。
 
-## 3. Color Scheme
+## 3. カラースキーム
 
-The color palette is inherited directly from Pico.css's default theme (in its auto-switching light/dark mode).
+カラーパレットは、Pico.cssのデフォルトテーマ（ライト/ダークモードの自動切り替え）から直接継承しています。
 
-- **Primary Color:** A neutral, typically dark grey or blue, used for primary actions and highlights.
-- **Secondary Color:** A lighter grey, used for secondary actions.
-- **Contrast Color:** A distinct color used for destructive actions (e.g., the "Delete" button) to draw user attention.
-- **Text Color:** High-contrast dark grey (light mode) or light grey (dark mode) for readability.
-- **Background Color:** A light off-white (light mode) or a very dark grey (dark mode).
+- **プライマリカラー:** 主要なアクションやハイライトに使用される、ニュートラルで一般的には濃いグレーまたは青色。
+- **セカンダリカラー:** 第二のアクションに使用される、より明るいグレー。
+- **コントラストカラー:** ユーザーの注意を引くための、破壊的なアクション（例: 「削除」ボタン）に使用される明確な色。
+- **テキストカラー:** 可読性のためのハイコントラストな濃いグレー（ライトモード）または明るいグレー（ダークモード）。
+- **背景色:** 明るいオフホワイト（ライトモード）または非常に濃いグレー（ダークモード）。
 
-## 4. Typography
+## 4. タイポグラフィ
 
-- **Font Family:** The application uses a system font stack, which defaults to the native font of the user's operating system (e.g., San Francisco on macOS, Segoe UI on Windows). This ensures fast loading times and a familiar look and feel.
-- **Hierarchy:**
-  - `<h1>`, `<h2>`: Used for main page titles and section headers.
-  - `<p>`, `<td>`: Standard body text.
-  - `<label>`, `<small>`: Used in forms to label inputs and provide help text.
-  - `<code>`: Used to display tags and code-like text in a monospaced font.
+- **フォントファミリー:** アプリケーションはシステムフォントスタックを使用しており、ユーザーのオペレーティングシステムのネイティブフォント（例: macOSではSan Francisco、WindowsではSegoe UI）がデフォルトとなります。これにより、高速な読み込みと馴染みのあるルックアンドフィールを実現します。
+- **階層:**
+  - `<h1>`, `<h2>`: メインページのタイトルやセクションの見出しに使用。
+  - `<p>`, `<td>`: 標準的な本文テキスト。
+  - `<label>`, `<small>`: フォームで入力欄のラベルや補助テキストに使用。
+  - `<code>`: タグやコードのようなテキストを等幅フォントで表示するために使用。
 
-## 5. Components
+## 5. コンポーネント
 
-### Navigation Bar (`<nav>`)
-A simple, persistent header containing the application title and primary navigation links ("Home", "Create New Tool").
+### ナビゲーションバー (`<nav>`)
+アプリケーションのタイトルと主要なナビゲーションリンク（"Home", "Create New Tool"）を含む、シンプルで永続的なヘッダー。
 
-### Buttons (`<button>`, `<a role="button">`)
-- **Primary Action (Default Button):** Used for the main submission action on a page (e.g., "Create Tool", "Update Tool").
-- **Secondary (`.secondary`):** Used for less critical, non-disruptive actions (e.g., "Edit").
-- **Secondary Outline (`.secondary.outline`):** Used for the most common, non-primary action, like "Use".
-- **Contrast (`.contrast.outline` or `.contrast`):** Reserved for potentially destructive actions. In this app, it is used for the "Delete" button trigger (`⋮`) and the button itself.
+### ボタン (`<button>`, `<a role="button">`)
+- **プライマリアクション (デフォルトボタン):** ページ上の主要な送信アクション（例: "Create Tool", "Update Tool"）に使用。
+- **セカンダリ (`.secondary`):** それほど重要ではない、非破壊的なアクション（例: "Edit"）に使用。
+- **セカンダリアウトライン (`.secondary.outline`):** 最も一般的だがプライマリではないアクション（例: "Use"）に使用。
+- **コントラスト (`.contrast.outline` または `.contrast`):** 破壊的な可能性のあるアクションのために予約されています。このアプリでは、「削除」ボタントリガー（`⋮`）とそのアクション自体に使用されます。
 
-### Forms
-Standard HTML form elements (`<input>`, `<textarea>`, `<select>`, `<fieldset>`) are styled by Pico.css to be clean and legible. Labels are placed above their corresponding inputs.
+### フォーム
+標準的なHTMLフォーム要素（`<input>`, `<textarea>`, `<select>`, `<fieldset>`）は、クリーンで読みやすいようにPico.cssによってスタイリングされます。ラベルは対応する入力欄の上に配置されます。
 
-### Table (`<table>`)
-The tool list is displayed in a standard table, providing a structured and scannable overview of all tools.
+### テーブル (`<table>`)
+ツール一覧は標準的なテーブルで表示され、すべてのツールの構造化されたスキャンしやすい概要を提供します。
 
-### Dropdown / Accordion (`<details>`)
-The `<details>` and `<summary>` elements are used to create a compact dropdown menu for "Edit" and "Delete" actions, cleaning up the UI in the actions column of the tool list.
+### ドロップダウン / アコーディオン (`<details>`)
+`<details>` と `<summary>` 要素は、「Edit」と「Delete」アクションのためのコンパクトなドロップダウンメニューを作成し、アクションカラムのUIを整理するために使用されます。
 
-### Article (`<article>`)
-Content-heavy pages like the "Create" and "Edit" forms are wrapped in an `<article>` tag, which provides a visually distinct container with a subtle border and padding.
+### アーティクル (`<article>`)
+「Create」や「Edit」のようなコンテンツの多いページは、`<article>` タグで囲まれ、微細な境界線とパディングを持つ視覚的に区別されたコンテナを提供します。
 
-## 6. Layout
+## 6. レイアウト
 
-- **Main Container (`<main class="container">`):** The primary layout container, which centers the content and constrains its maximum width for better readability on large screens.
-- **Grid (`<div class="grid">`):** Used to create simple, responsive column layouts, such as for the search/sort bar and the action buttons.
+- **メインコンテナ (`<main class="container">`):** 主要なレイアウトコンテナで、コンテンツを中央に配置し、大画面での可読性を向上させるために最大幅を制限します。
+- **グリッド (`<div class="grid">`):** 検索/ソートバーやアクションボタンなど、シンプルなレスポンシブカラムレイアウトを作成するために使用されます。
 
-## 7. Future Improvements
+## 7. 今後の改善案
 
-- **Custom Logo:** A simple logo could be added to the navigation bar to give the application a unique identity.
-- **Theme Toggle:** While Pico.css supports auto-switching, an explicit light/dark mode toggle could be added for user convenience.
-- **Tag Cloud:** The previously-discussed tag cloud feature could be implemented with a design that fits the minimalist aesthetic (e.g., a simple list of `<code>` tags).
+- **カスタムロゴ:** アプリケーションに独自のアイデンティティを与えるために、ナビゲーションバーにシンプルなロゴを追加することが考えられます。
+- **テーマ切り替え:** Pico.cssは自動切り替えをサポートしていますが、ユーザーの利便性のために明示的なライト/ダークモードの切り替え機能を追加することもできます。
+- **タグクラウド:** 以前に議論されたタグクラウド機能は、ミニマリストの美学に合ったデザイン（例: `<code>`タグのシンプルなリスト）で実装することが可能です。

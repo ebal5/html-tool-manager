@@ -1,32 +1,46 @@
-from typing import List, Optional, Dict
 from enum import Enum
+from typing import Dict, List, Optional
 
-from sqlmodel import Session, select, text, column, table, func
-from sqlalchemy import cast, String
+from sqlalchemy import String, cast, Table, Column, Integer, Float, MetaData
+from sqlmodel import Session, select, text, SQLModel
 
 from html_tool_manager.models import Tool
 
+
 class SortOrder(str, Enum):
+    """検索結果のソート順を定義するEnum。"""
     RELEVANCE = "relevance"
     NAME_ASC = "name_asc"
     NAME_DESC = "name_desc"
     UPDATED_ASC = "updated_asc"
     UPDATED_DESC = "updated_desc"
 
+
 class ToolRepository:
+    """ツールのデータベース操作をカプセル化するリポジトリクラス。"""
+
     def __init__(self, session: Session):
+        """
+        コンストラクタ。
+
+        Args:
+            session: データベースセッション。
+        """
         self.session = session
 
     def create_tool(self, tool: Tool) -> Tool:
+        """新しいツールをデータベースに作成します。"""
         self.session.add(tool)
         self.session.commit()
         self.session.refresh(tool)
         return tool
 
     def get_tool(self, tool_id: int) -> Optional[Tool]:
+        """IDで単一のツールを取得します。"""
         return self.session.get(Tool, tool_id)
 
     def get_all_tools(self, offset: int = 0, limit: int = 100) -> List[Tool]:
+        """すべてのツールをページネーション付きで取得します。"""
         statement = select(Tool).order_by(Tool.updated_at.desc()).offset(offset).limit(limit)
         return self.session.exec(statement).all()
 
@@ -37,33 +51,34 @@ class ToolRepository:
         offset: int = 0,
         limit: int = 100,
     ) -> List[Tool]:
+        """指定されたクエリとソート順でツールを検索します。"""
         
-        statement = select(Tool)
-        
+        statement = select(Tool) # ベースとなるクエリ
+
         # FTS検索条件の組み立て
-        fts_queries = []
+        fts_query_parts = []
         if parsed_query.get("term"):
-            terms = [f'{term}*' for term in parsed_query["term"]]
-            fts_queries.append(" ".join(terms))
+            terms = " ".join([f'"{term}*"' for term in parsed_query["term"]])
+            fts_query_parts.append(f"({terms})")
         if parsed_query.get("name"):
-            terms = [f'name:{term}*' for term in parsed_query["name"]]
-            fts_queries.extend(terms)
+            terms = " ".join([f'"{term}*"' for term in parsed_query["name"]])
+            fts_query_parts.append(f"name:({terms})")
         if parsed_query.get("desc"):
-            terms = [f'description:{term}*' for term in parsed_query["desc"]]
-            fts_queries.extend(terms)
+            terms = " ".join([f'"{term}*"' for term in parsed_query["desc"]])
+            fts_query_parts.append(f"description:({terms})")
+        
+        # FTS仮想テーブルをTableオブジェクトとして定義 (rankカラムも定義)
+        fts_metadata = MetaData()
+        tool_fts_table = Table("tool_fts", fts_metadata, Column("rowid", Integer), Column("rank", Float))
 
-        if fts_queries:
-            fts_match_query = " ".join(fts_queries)
-            tool_fts = table("tool_fts", column("rowid"), column("rank"))
-            
-            statement = select(Tool, tool_fts.c.rank).join(
-                tool_fts, Tool.id == tool_fts.c.rowid
+        if fts_query_parts:
+            fts_match_query = " ".join(fts_query_parts)
+            # FTSテーブルとJOIN
+            statement = statement.join(
+                tool_fts_table, Tool.id == tool_fts_table.c.rowid
             ).where(
-                text("tool_fts MATCH :fts_query").params(fts_query=fts_match_query)
-            )
-        else:
-            statement = select(Tool, text("0 as rank"))
-
+                text(f"{tool_fts_table.name} MATCH :fts_query")
+            ).params(fts_query=fts_match_query)
 
         # タグ検索条件
         if parsed_query.get("tag"):
@@ -71,8 +86,9 @@ class ToolRepository:
                 statement = statement.where(cast(Tool.tags, String).like(f"%{tag_query}%"))
 
         # ソート順
-        if sort == SortOrder.RELEVANCE and fts_queries:
-            statement = statement.order_by(text("rank"))
+        if sort == SortOrder.RELEVANCE and fts_query_parts:
+            # FTSのrankは小さいほど関連性が高いので ASC
+            statement = statement.order_by(tool_fts_table.c.rank.asc())
         elif sort == SortOrder.NAME_ASC:
             statement = statement.order_by(Tool.name.asc())
         elif sort == SortOrder.NAME_DESC:
@@ -82,14 +98,15 @@ class ToolRepository:
         elif sort == SortOrder.UPDATED_DESC:
             statement = statement.order_by(Tool.updated_at.desc())
         else:
-            statement = statement.order_by(Tool.updated_at.desc())
-        
+            statement = statement.order_by(Tool.updated_at.desc()) # デフォルトソート
+
         statement = statement.offset(offset).limit(limit)
         
         results = self.session.exec(statement).all()
-        return [tool for tool, rank in results]
+        return results
 
     def update_tool(self, tool_id: int, tool_update: Tool) -> Optional[Tool]:
+        """既存のツール情報を更新します。"""
         tool = self.session.get(Tool, tool_id)
         if not tool:
             return None
@@ -104,6 +121,7 @@ class ToolRepository:
         return tool
 
     def delete_tool(self, tool_id: int) -> Optional[Tool]:
+        """ツールを削除します。"""
         tool = self.session.get(Tool, tool_id)
         if not tool:
             return None
