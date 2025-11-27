@@ -43,17 +43,17 @@ class ToolRepository:
         # FTS検索条件の組み立て
         fts_queries = []
         if parsed_query.get("term"):
-            # FTS5では、プレフィックスなしの単語は全てのカラムを検索する
-            # (col1 OR col2 OR col3) MATCH 'word' は ('word') と同じ
-            fts_queries.append(f"({' OR '.join(parsed_query['term'])})")
+            terms = [f'{term}*' for term in parsed_query["term"]]
+            fts_queries.append(" ".join(terms))
         if parsed_query.get("name"):
-            fts_queries.append(f"name:({' OR '.join(parsed_query['name'])})")
+            terms = [f'name:{term}*' for term in parsed_query["name"]]
+            fts_queries.extend(terms)
         if parsed_query.get("desc"):
-            fts_queries.append(f"description:({' OR '.join(parsed_query['desc'])})")
+            terms = [f'description:{term}*' for term in parsed_query["desc"]]
+            fts_queries.extend(terms)
 
         if fts_queries:
             fts_match_query = " ".join(fts_queries)
-            # FTSテーブルを明示的に定義
             tool_fts = table("tool_fts", column("rowid"), column("rank"))
             
             statement = select(Tool, tool_fts.c.rank).join(
@@ -62,18 +62,17 @@ class ToolRepository:
                 text("tool_fts MATCH :fts_query").params(fts_query=fts_match_query)
             )
         else:
-            # FTS検索がない場合はrankカラムは不要だが、列数を合わせるために0を追加
             statement = select(Tool, text("0 as rank"))
 
 
-        # タグ検索条件 (JSON配列を文字列として扱い、LIKE検索する)
+        # タグ検索条件
         if parsed_query.get("tag"):
             for tag_query in parsed_query["tag"]:
                 statement = statement.where(cast(Tool.tags, String).like(f"%{tag_query}%"))
 
         # ソート順
         if sort == SortOrder.RELEVANCE and fts_queries:
-            statement = statement.order_by(text("rank")) # BM25のrankは小さいほど関連性が高い
+            statement = statement.order_by(text("rank"))
         elif sort == SortOrder.NAME_ASC:
             statement = statement.order_by(Tool.name.asc())
         elif sort == SortOrder.NAME_DESC:
@@ -88,7 +87,6 @@ class ToolRepository:
         statement = statement.offset(offset).limit(limit)
         
         results = self.session.exec(statement).all()
-        # 結果は (Tool, rank) のタプルのリスト
         return [tool for tool, rank in results]
 
     def update_tool(self, tool_id: int, tool_update: Tool) -> Optional[Tool]:

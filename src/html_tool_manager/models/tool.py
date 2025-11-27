@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from sqlmodel import Field, SQLModel, Column, JSON
@@ -13,8 +13,8 @@ class ToolBase(SQLModel):
 class Tool(ToolBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     filepath: str # DBには必ずfilepathを保存するので、こちらは必須のまま
-    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
-    updated_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
 
 # Pydanticスキーマ
 class ToolCreate(ToolBase):

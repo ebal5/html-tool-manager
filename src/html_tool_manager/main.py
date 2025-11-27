@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -6,17 +7,21 @@ from fastapi.templating import Jinja2Templates
 from html_tool_manager.core.db import create_db_and_tables
 from html_tool_manager.api.tools import router as tools_router
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # on startup
+    create_db_and_tables()
+    yield
+    # on shutdown
+    pass
+
+app = FastAPI(lifespan=lifespan)
 
 # 静的ファイルの提供
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Jinja2Templatesの設定
 templates = Jinja2Templates(directory="templates")
-
-@app.on_event("startup")
-def on_startup():
-    create_db_and_tables()
 
 app.include_router(tools_router, prefix="/api") # APIのパスを/api以下に移動
 
