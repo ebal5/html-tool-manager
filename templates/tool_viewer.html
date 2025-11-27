@@ -1,14 +1,54 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>View Tool {{ tool_id }}</title>
-</head>
-<body>
-    <h1>Tool Viewer (ID: {{ tool_id }})</h1>
-    <p>This page will eventually display the HTML/JS tool.</p>
-    <p>For now, please manually navigate to the API endpoint <a href="/api/tools/{{ tool_id }}">{{ tool_id }}</a> to see tool details.</p>
-    <a href="/">Back to Home</a>
-</body>
-</html>
+{% extends 'base.html' %}
+
+{% block title %}View Tool - HTML Tool Manager{% endblock %}
+
+{% block content %}
+    <article>
+        <header>
+            <h2 id="tool-name">Loading...</h2>
+            <p id="tool-description"></p>
+            <div id="tool-tags"></div>
+        </header>
+
+        <div id="tool-content">
+            <p aria-busy="true">Loading tool content...</p>
+        </div>
+    </article>
+
+    <script>
+        const toolId = {{ tool_id }};
+        const toolNameEl = document.getElementById('tool-name');
+        const toolDescriptionEl = document.getElementById('tool-description');
+        const toolTagsEl = document.getElementById('tool-tags');
+        const toolContentEl = document.getElementById('tool-content');
+
+        async function fetchToolDetails() {
+            try {
+                const response = await fetch(`/api/tools/${toolId}`);
+                if (!response.ok) {
+                    throw new Error('Tool not found');
+                }
+                const tool = await response.json();
+
+                toolNameEl.textContent = tool.name;
+                toolDescriptionEl.textContent = tool.description || '';
+                toolTagsEl.innerHTML = tool.tags.map(tag => `<code>${tag}</code>`).join(' ');
+
+                // ここでツール本体をロードする
+                // filepath がローカルの静的ファイルであれば iframe で表示
+                // TODO: フォルダ構成のツールや外部URLへの対応
+                if (tool.filepath.startsWith('static/')) {
+                    toolContentEl.innerHTML = `<iframe src="/${tool.filepath}" style="width: 100%; height: 60vh; border: 1px solid var(--pico-muted-border-color);"></iframe>`;
+                } else {
+                     toolContentEl.innerHTML = `<p>Cannot display this tool type. File path: <code>${tool.filepath}</code></p>`;
+                }
+
+            } catch (error) {
+                toolContentEl.innerHTML = `<p style="color: var(--pico-color-red-500);">Failed to load tool details.</p>`;
+                console.error('Error fetching tool details:', error);
+            }
+        }
+
+        fetchToolDetails();
+    </script>
+{% endblock %}

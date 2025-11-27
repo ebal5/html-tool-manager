@@ -1,45 +1,100 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create New Tool</title>
-</head>
-<body>
-    <h1>Create New Tool</h1>
-    <form id="create-tool-form">
-        <label for="name">Tool Name:</label><br>
-        <input type="text" id="name" name="name" required><br><br>
-        
-        <label for="description">Description:</label><br>
-        <textarea id="description" name="description"></textarea><br><br>
-        
-        <label for="tags">Tags (comma separated):</label><br>
-        <input type="text" id="tags" name="tags"><br><br>
+{% extends 'base.html' %}
 
-        <label for="filepath">File Path (or URL for external tool):</label><br>
-        <input type="text" id="filepath" name="filepath" required><br><br>
+{% block title %}Create New Tool - HTML Tool Manager{% endblock %}
 
-        <button type="submit">Create Tool</button>
-    </form>
-    <div id="message"></div>
-    <a href="/">Back to Home</a>
+{% block content %}
+    <article>
+        <header>
+            <h2>Create New Tool</h2>
+        </header>
+
+        <form id="create-tool-form">
+            <label for="name">Tool Name</label>
+            <input type="text" id="name" name="name" placeholder="My Awesome Tool" required>
+            
+            <label for="description">Description</label>
+            <textarea id="description" name="description" placeholder="A short description of what this tool does."></textarea>
+            
+            <label for="tags">Tags</label>
+            <input type="text" id="tags" name="tags" placeholder="calculator, text, utility">
+            <small>Comma separated values.</small>
+
+            <fieldset>
+                <legend>Tool Source</legend>
+                <input type="radio" id="source-paste" name="source-type" value="paste" checked>
+                <label for="source-paste">Paste HTML Content</label>
+                <br>
+                <input type="radio" id="source-path" name="source-type" value="path">
+                <label for="source-path">File Path</label>
+            </fieldset>
+
+            <div id="paste-section">
+                <label for="html_content">HTML Content</label>
+                <textarea id="html_content" name="html_content" rows="10" placeholder="<!DOCTYPE html>..."></textarea>
+            </div>
+
+            <div id="path-section" style="display: none;">
+                <label for="filepath">File Path</label>
+                <input type="text" id="filepath" name="filepath" placeholder="/path/to/your/tool.html">
+            </div>
+
+            <button type="submit" id="submit-btn">Create Tool</button>
+        </form>
+        <p id="message" style="margin-top: 1rem;"></p>
+    </article>
 
     <script>
+        const pasteRadio = document.getElementById('source-paste');
+        const pathRadio = document.getElementById('source-path');
+        const pasteSection = document.getElementById('paste-section');
+        const pathSection = document.getElementById('path-section');
+        const htmlContentTextarea = document.getElementById('html_content');
+        const filepathInput = document.getElementById('filepath');
+
+        // Toggle visibility of input sections
+        pasteRadio.addEventListener('change', () => {
+            if (pasteRadio.checked) {
+                pasteSection.style.display = 'block';
+                pathSection.style.display = 'none';
+                htmlContentTextarea.required = true;
+                filepathInput.required = false;
+            }
+        });
+
+        pathRadio.addEventListener('change', () => {
+            if (pathRadio.checked) {
+                pasteSection.style.display = 'none';
+                pathSection.style.display = 'block';
+                htmlContentTextarea.required = false;
+                filepathInput.required = true;
+            }
+        });
+
+        // Initialize required fields
+        htmlContentTextarea.required = true;
+        filepathInput.required = false;
+
+        // Form submission logic
         document.getElementById('create-tool-form').addEventListener('submit', async function(event) {
             event.preventDefault();
+            const submitBtn = document.getElementById('submit-btn');
+            submitBtn.setAttribute('aria-busy', 'true');
 
             const name = document.getElementById('name').value;
             const description = document.getElementById('description').value;
             const tags = document.getElementById('tags').value.split(',').map(tag => tag.trim()).filter(tag => tag !== '');
-            const filepath = document.getElementById('filepath').value;
-
+            
             const toolData = {
                 name: name,
                 description: description,
-                tags: tags,
-                filepath: filepath
+                tags: tags
             };
+
+            if (pasteRadio.checked) {
+                toolData.html_content = document.getElementById('html_content').value;
+            } else {
+                toolData.filepath = document.getElementById('filepath').value;
+            }
 
             const response = await fetch('/api/tools/', {
                 method: 'POST',
@@ -52,15 +107,15 @@
             const messageDiv = document.getElementById('message');
             if (response.ok) {
                 const newTool = await response.json();
-                messageDiv.textContent = `Tool '${newTool.name}' created successfully with ID: ${newTool.id}`;
-                messageDiv.style.color = 'green';
-                document.getElementById('create-tool-form').reset(); // Clear form
+                messageDiv.innerHTML = `✅ Tool '<strong>${newTool.name}</strong>' created successfully. <a href="/tools/view/${newTool.id}">View it here</a>.`;
+                messageDiv.style.color = 'var(--pico-color-green-500)';
+                document.getElementById('create-tool-form').reset();
             } else {
                 const errorData = await response.json();
-                messageDiv.textContent = `Error: ${errorData.detail || response.statusText}`;
-                messageDiv.style.color = 'red';
+                messageDiv.textContent = `❌ Error: ${errorData.detail || 'An unknown error occurred.'}`;
+                messageDiv.style.color = 'var(--pico-color-red-500)';
             }
+            submitBtn.removeAttribute('aria-busy');
         });
     </script>
-</body>
-</html>
+{% endblock %}

@@ -1,37 +1,68 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HTML Tool Manager</title>
-</head>
-<body>
-    <h1>HTML Tool Manager</h1>
-    <a href="/tools/create">Create New Tool</a>
+{% extends 'base.html' %}
+
+{% block title %}Home - HTML Tool Manager{% endblock %}
+
+{% block content %}
     <h2>Registered Tools</h2>
-    <ul id="tool-list">
+    <div id="tool-list-container">
         <!-- Tools will be loaded here by JavaScript -->
-    </ul>
+        <p aria-busy="true">Loading tools...</p>
+    </div>
 
     <script>
         async function fetchTools() {
-            const response = await fetch('/api/tools/');
-            const tools = await response.json();
-            const toolList = document.getElementById('tool-list');
-            toolList.innerHTML = ''; // Clear existing list
+            const container = document.getElementById('tool-list-container');
+            
+            try {
+                const response = await fetch('/api/tools/');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const tools = await response.json();
 
-            tools.forEach(tool => {
-                const li = document.createElement('li');
-                const link = document.createElement('a');
-                link.href = `/tools/view/${tool.id}`; // 仮の表示URL
-                link.textContent = tool.name;
-                li.appendChild(link);
-                li.innerHTML += ` - ${tool.description || 'No description'}`;
-                toolList.appendChild(li);
-            });
+                if (tools.length === 0) {
+                    container.innerHTML = '<p>No tools registered yet.</p>';
+                    return;
+                }
+
+                const table = document.createElement('table');
+                table.innerHTML = `
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Description</th>
+                            <th>Tags</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                `;
+                const tbody = table.querySelector('tbody');
+
+                tools.forEach(tool => {
+                    const tr = document.createElement('tr');
+                    
+                    const tagsHtml = tool.tags.map(tag => `<code>${tag}</code>`).join(' ');
+
+                    tr.innerHTML = `
+                        <td>${tool.name}</td>
+                        <td>${tool.description || ''}</td>
+                        <td>${tagsHtml}</td>
+                        <td><a href="/tools/view/${tool.id}" role="button" class="secondary">View</a></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+                container.innerHTML = '';
+                container.appendChild(table);
+
+            } catch (error) {
+                container.innerHTML = `<p style="color: var(--pico-color-red-500);">Failed to load tools. Please try again later.</p>`;
+                console.error('Error fetching tools:', error);
+            }
         }
 
         fetchTools();
     </script>
-</body>
-</html>
+{% endblock %}
