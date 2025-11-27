@@ -119,6 +119,13 @@
 
         searchBox.addEventListener('input', () => {
             clearTimeout(debounceTimer);
+
+            const query = searchBox.value.trim();
+            // クエリがコロンで終わっている場合は、まだ入力途中なのでリクエストを送らない
+            if (query.endsWith(':')) {
+                return;
+            }
+
             debounceTimer = setTimeout(fetchTools, 300); // 300msのデバウンス
         });
 
