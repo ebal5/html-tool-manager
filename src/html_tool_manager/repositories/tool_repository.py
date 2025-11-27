@@ -1,16 +1,23 @@
-from typing import List, Optional
+from typing import List, Optional, Dict
+from enum import Enum
 
-from sqlmodel import Session, select
+from sqlmodel import Session, select, text, column, table, func
+from sqlalchemy import cast, String
 
-from html_tool_manager.models import Tool, ToolCreate
+from html_tool_manager.models import Tool
 
+class SortOrder(str, Enum):
+    RELEVANCE = "relevance"
+    NAME_ASC = "name_asc"
+    NAME_DESC = "name_desc"
+    UPDATED_ASC = "updated_asc"
+    UPDATED_DESC = "updated_desc"
 
 class ToolRepository:
     def __init__(self, session: Session):
         self.session = session
 
-    def create_tool(self, tool_create: ToolCreate) -> Tool:
-        tool = Tool.model_validate(tool_create)
+    def create_tool(self, tool: Tool) -> Tool:
         self.session.add(tool)
         self.session.commit()
         self.session.refresh(tool)
@@ -20,16 +27,77 @@ class ToolRepository:
         return self.session.get(Tool, tool_id)
 
     def get_all_tools(self, offset: int = 0, limit: int = 100) -> List[Tool]:
-        statement = select(Tool).offset(offset).limit(limit)
+        statement = select(Tool).order_by(Tool.updated_at.desc()).offset(offset).limit(limit)
         return self.session.exec(statement).all()
 
-    def update_tool(self, tool_id: int, tool_update: ToolCreate) -> Optional[Tool]:
+    def search_tools(
+        self,
+        parsed_query: Dict[str, List[str]],
+        sort: SortOrder = SortOrder.RELEVANCE,
+        offset: int = 0,
+        limit: int = 100,
+    ) -> List[Tool]:
+        
+        statement = select(Tool)
+        
+        # FTS検索条件の組み立て
+        fts_queries = []
+        if parsed_query.get("term"):
+            # FTS5では、プレフィックスなしの単語は全てのカラムを検索する
+            # (col1 OR col2 OR col3) MATCH 'word' は ('word') と同じ
+            fts_queries.append(f"({' OR '.join(parsed_query['term'])})")
+        if parsed_query.get("name"):
+            fts_queries.append(f"name:({' OR '.join(parsed_query['name'])})")
+        if parsed_query.get("desc"):
+            fts_queries.append(f"description:({' OR '.join(parsed_query['desc'])})")
+
+        if fts_queries:
+            fts_match_query = " ".join(fts_queries)
+            # FTSテーブルを明示的に定義
+            tool_fts = table("tool_fts", column("rowid"), column("rank"))
+            
+            statement = select(Tool, tool_fts.c.rank).join(
+                tool_fts, Tool.id == tool_fts.c.rowid
+            ).where(
+                text("tool_fts MATCH :fts_query").params(fts_query=fts_match_query)
+            )
+        else:
+            # FTS検索がない場合はrankカラムは不要だが、列数を合わせるために0を追加
+            statement = select(Tool, text("0 as rank"))
+
+
+        # タグ検索条件 (JSON配列を文字列として扱い、LIKE検索する)
+        if parsed_query.get("tag"):
+            for tag_query in parsed_query["tag"]:
+                statement = statement.where(cast(Tool.tags, String).like(f"%{tag_query}%"))
+
+        # ソート順
+        if sort == SortOrder.RELEVANCE and fts_queries:
+            statement = statement.order_by(text("rank")) # BM25のrankは小さいほど関連性が高い
+        elif sort == SortOrder.NAME_ASC:
+            statement = statement.order_by(Tool.name.asc())
+        elif sort == SortOrder.NAME_DESC:
+            statement = statement.order_by(Tool.name.desc())
+        elif sort == SortOrder.UPDATED_ASC:
+            statement = statement.order_by(Tool.updated_at.asc())
+        elif sort == SortOrder.UPDATED_DESC:
+            statement = statement.order_by(Tool.updated_at.desc())
+        else:
+            statement = statement.order_by(Tool.updated_at.desc())
+        
+        statement = statement.offset(offset).limit(limit)
+        
+        results = self.session.exec(statement).all()
+        # 結果は (Tool, rank) のタプルのリスト
+        return [tool for tool, rank in results]
+
+    def update_tool(self, tool_id: int, tool_update: Tool) -> Optional[Tool]:
         tool = self.session.get(Tool, tool_id)
         if not tool:
             return None
         
-        # Update specific fields
-        for key, value in tool_update.model_dump(exclude_unset=True).items():
+        tool_data = tool_update.model_dump(exclude_unset=True)
+        for key, value in tool_data.items():
             setattr(tool, key, value)
         
         self.session.add(tool)

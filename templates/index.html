@@ -3,25 +3,58 @@
 {% block title %}Home - HTML Tool Manager{% endblock %}
 
 {% block content %}
-    <h2>Registered Tools</h2>
+    <div class="grid">
+        <div class="search-container">
+            <input type="search" id="search-box" name="search" placeholder="Search tools (e.g., util name:calc)">
+        </div>
+        <div class="sort-container">
+            <select id="sort-select">
+                <option value="relevance">Sort by Relevance</option>
+                <option value="name_asc">Sort by Name (A-Z)</option>
+                <option value="name_desc">Sort by Name (Z-A)</option>
+                <option value="updated_desc">Sort by Updated (Newest)</option>
+                <option value="updated_asc">Sort by Updated (Oldest)</option>
+            </select>
+        </div>
+    </div>
+
     <div id="tool-list-container">
-        <!-- Tools will be loaded here by JavaScript -->
         <p aria-busy="true">Loading tools...</p>
     </div>
 
+    <style>
+        .grid {
+            display: grid;
+            grid-template-columns: 3fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+
     <script>
+        const searchBox = document.getElementById('search-box');
+        const sortSelect = document.getElementById('sort-select');
+        const container = document.getElementById('tool-list-container');
+        let debounceTimer;
+
         async function fetchTools() {
-            const container = document.getElementById('tool-list-container');
+            container.innerHTML = '<p aria-busy="true">Loading tools...</p>';
+            const query = searchBox.value;
+            const sort = sortSelect.value;
+            
+            const params = new URLSearchParams();
+            if (query) params.append('q', query);
+            if (sort) params.append('sort', sort);
             
             try {
-                const response = await fetch('/api/tools/');
+                const response = await fetch(`/api/tools/?${params.toString()}`);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 const tools = await response.json();
 
                 if (tools.length === 0) {
-                    container.innerHTML = '<p>No tools registered yet.</p>';
+                    container.innerHTML = '<p>No tools found.</p>';
                     return;
                 }
 
@@ -35,21 +68,18 @@
                             <th>Actions</th>
                         </tr>
                     </thead>
-                    <tbody>
-                    </tbody>
+                    <tbody></tbody>
                 `;
                 const tbody = table.querySelector('tbody');
 
                 tools.forEach(tool => {
                     const tr = document.createElement('tr');
-                    
                     const tagsHtml = tool.tags.map(tag => `<code>${tag}</code>`).join(' ');
-
                     tr.innerHTML = `
                         <td>${tool.name}</td>
                         <td>${tool.description || ''}</td>
                         <td>${tagsHtml}</td>
-                        <td><a href="/tools/view/${tool.id}" role="button" class="secondary">View</a></td>
+                        <td><a href="/tools/view/${tool.id}" role="button" class="secondary outline">View</a></td>
                     `;
                     tbody.appendChild(tr);
                 });
@@ -63,6 +93,14 @@
             }
         }
 
+        searchBox.addEventListener('input', () => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(fetchTools, 300); // 300msのデバウンス
+        });
+
+        sortSelect.addEventListener('change', fetchTools);
+
+        // Initial load
         fetchTools();
     </script>
 {% endblock %}
