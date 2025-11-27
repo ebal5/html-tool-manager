@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML Tool Manager</title>
+</head>
+<body>
+    <h1>HTML Tool Manager</h1>
+    <a href="/tools/create">Create New Tool</a>
+    <h2>Registered Tools</h2>
+    <ul id="tool-list">
+        <!-- Tools will be loaded here by JavaScript -->
+    </ul>
+
+    <script>
+        async function fetchTools() {
+            const response = await fetch('/api/tools/');
+            const tools = await response.json();
+            const toolList = document.getElementById('tool-list');
+            toolList.innerHTML = ''; // Clear existing list
+
+            tools.forEach(tool => {
+                const li = document.createElement('li');
+                const link = document.createElement('a');
+                link.href = `/tools/view/${tool.id}`; // 仮の表示URL
+                link.textContent = tool.name;
+                li.appendChild(link);
+                li.innerHTML += ` - ${tool.description || 'No description'}`;
+                toolList.appendChild(li);
+            });
+        }
+
+        fetchTools();
+    </script>
+</body>
+</html>

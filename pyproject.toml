@@ -1,0 +1,23 @@
+[project]
+name = "html-tool-manager"
+version = "0.1.0"
+description = "HTML/JS tools manager"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "sqlmodel",
+    "jinja2",
+    "pydantic-settings",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "poethepoet",
+]
+
+[tool.poe.tasks.dev]
+cmd = "uvicorn html_tool_manager.main:app --reload"
+env = { PYTHONPATH = "src" }
+
