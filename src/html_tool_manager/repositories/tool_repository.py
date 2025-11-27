@@ -1,10 +1,12 @@
+import os
+import uuid
 from enum import Enum
 from typing import Dict, List, Optional
 
 from sqlalchemy import String, cast, Table, Column, Integer, Float, MetaData
 from sqlmodel import Session, select, text, SQLModel
 
-from html_tool_manager.models import Tool
+from html_tool_manager.models import Tool, ToolCreate
 
 
 class SortOrder(str, Enum):
@@ -34,6 +36,30 @@ class ToolRepository:
         self.session.commit()
         self.session.refresh(tool)
         return tool
+    
+    def create_tool_with_content(self, tool_data: ToolCreate) -> Tool:
+        """HTMLコンテンツをファイルに保存し、ツールをDBに作成します。"""
+        
+        if not tool_data.html_content:
+            # この関数ではhtml_contentが必須であると仮定
+            raise ValueError("'html_content' is required.")
+
+        # 一意のディレクトリとファイルパスを生成
+        tool_dir = f"static/tools/{uuid.uuid4()}"
+        os.makedirs(tool_dir, exist_ok=True)
+        final_filepath = f"{tool_dir}/index.html"
+        
+        with open(final_filepath, "w") as f:
+            f.write(tool_data.html_content)
+        
+        # DBに保存するモデルのfilepathを更新
+        tool_data.filepath = final_filepath
+        
+        # ToolCreateからToolオブジェクトを作成
+        tool_to_db = Tool.model_validate(tool_data)
+        
+        # 既存のcreate_toolを呼び出す
+        return self.create_tool(tool_to_db)
 
     def get_tool(self, tool_id: int) -> Optional[Tool]:
         """IDで単一のツールを取得します。"""
@@ -58,14 +84,16 @@ class ToolRepository:
         # FTS検索条件の組み立て
         fts_query_parts = []
         if parsed_query.get("term"):
-            terms = " ".join([f'"{term}*"' for term in parsed_query["term"]])
+            # "term*" のようにクォートで囲む必要はない
+            terms = " OR ".join([f'{term}*' for term in parsed_query["term"]])
             fts_query_parts.append(f"({terms})")
         if parsed_query.get("name"):
-            terms = " ".join([f'"{term}*"' for term in parsed_query["name"]])
-            fts_query_parts.append(f"name:({terms})")
+            # name:j* のようにクォートで囲まない
+            terms = " OR ".join([f'{term}*' for term in parsed_query["name"]])
+            fts_query_parts.append(f"name:{terms}")
         if parsed_query.get("desc"):
-            terms = " ".join([f'"{term}*"' for term in parsed_query["desc"]])
-            fts_query_parts.append(f"description:({terms})")
+            terms = " OR ".join([f'{term}*' for term in parsed_query["desc"]])
+            fts_query_parts.append(f"description:{terms}")
         
         # FTS仮想テーブルをTableオブジェクトとして定義 (rankカラムも定義)
         fts_metadata = MetaData()
@@ -73,7 +101,6 @@ class ToolRepository:
 
         if fts_query_parts:
             fts_match_query = " ".join(fts_query_parts)
-            # FTSテーブルとJOIN
             statement = statement.join(
                 tool_fts_table, Tool.id == tool_fts_table.c.rowid
             ).where(
@@ -102,6 +129,9 @@ class ToolRepository:
 
         statement = statement.offset(offset).limit(limit)
         
+        results = self.session.exec(statement).all()
+        return results
+
         results = self.session.exec(statement).all()
         return results
 

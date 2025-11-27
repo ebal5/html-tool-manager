@@ -9,6 +9,7 @@ dependencies = [
     "sqlmodel",
     "jinja2",
     "pydantic-settings",
+    "python-multipart>=0.0.20",
 ]
 
 [project.optional-dependencies]
@@ -39,4 +40,9 @@ indent-style = "space"
 [tool.poe.tasks.dev]
 cmd = "uvicorn html_tool_manager.main:app --reload"
 env = { PYTHONPATH = "src" }
+
+[dependency-groups]
+dev = [
+    "msgpack>=1.1.2",
+]
 

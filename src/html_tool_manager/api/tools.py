@@ -2,7 +2,9 @@ import os
 import uuid
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+import msgpack
+from fastapi import APIRouter, Depends, HTTPException, status, Query, File, UploadFile, Response
+from pydantic import BaseModel
 from sqlmodel import Session
 
 from html_tool_manager.core.db import get_session
@@ -16,26 +18,11 @@ router = APIRouter(prefix="/tools", tags=["tools"])
 def create_tool(tool_data: ToolCreate, session: Session = Depends(get_session)):
     """新しいツールを作成します。"""
     repo = ToolRepository(session)
-    
-    # html_contentが必須であることを検証
-    if not tool_data.html_content:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="'html_content' is required.")
-
-    # 一意のディレクトリとファイルパスを生成
-    tool_dir = f"static/tools/{uuid.uuid4()}"
-    os.makedirs(tool_dir, exist_ok=True)
-    final_filepath = f"{tool_dir}/index.html"
-    
-    with open(final_filepath, "w") as f:
-        f.write(tool_data.html_content)
-    
-    # DBに保存するモデルのfilepathを更新
-    tool_data.filepath = final_filepath
-    
-    # ToolCreateからToolオブジェクトを作成
-    tool_to_db = Tool.model_validate(tool_data)
-    created_tool = repo.create_tool(tool_to_db)
-    return created_tool
+    try:
+        created_tool = repo.create_tool_with_content(tool_data)
+        return created_tool
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 @router.get("/", response_model=List[ToolRead])
 def read_tools(
@@ -97,3 +84,76 @@ def delete_tool(tool_id: int, session: Session = Depends(get_session)):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tool not found")
     # 204 No Contentのため、このレスポンスボディは実際にはクライアントに送信されない
     return {"message": "Tool deleted successfully"}
+
+
+class ToolExportRequest(BaseModel):
+    tool_ids: List[int]
+
+@router.post("/export", response_class=Response)
+def export_tools(
+    export_request: ToolExportRequest,
+    session: Session = Depends(get_session)
+):
+    """選択されたツールをMessagePack形式でエクスポートします。"""
+    repo = ToolRepository(session)
+    tools_to_export = []
+    for tool_id in export_request.tool_ids:
+        tool = repo.get_tool(tool_id)
+        if tool:
+            # HTMLコンテンツを読み込む
+            try:
+                with open(tool.filepath, "r") as f:
+                    html_content = f.read()
+            except FileNotFoundError:
+                # ファイルが見つからない場合はスキップ
+                continue
+            
+            tool_data = {
+                "name": tool.name,
+                "description": tool.description,
+                "tags": tool.tags,
+                "html_content": html_content,
+            }
+            tools_to_export.append(tool_data)
+
+    if not tools_to_export:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No exportable tools found.")
+
+    # MessagePackでシリアライズ
+    packed_data = msgpack.packb(tools_to_export, use_bin_type=True)
+    
+    return Response(
+        content=packed_data,
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": 'attachment; filename="tools-export.pack"'}
+    )
+
+@router.post("/import")
+async def import_tools(
+    file: UploadFile = File(...),
+    session: Session = Depends(get_session)
+):
+    """MessagePackファイルからツールをインポートします。"""
+    if file.content_type != "application/octet-stream":
+        raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail="Unsupported file type.")
+    
+    contents = await file.read()
+    
+    try:
+        tools_to_import = msgpack.unpackb(contents, raw=False)
+    except (msgpack.UnpackException, ValueError) as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid MessagePack file: {e}")
+
+    imported_count = 0
+    repo = ToolRepository(session)
+    for tool_data in tools_to_import:
+        # ToolCreateモデルでバリデーション
+        try:
+            tool_create = ToolCreate(**tool_data)
+            repo.create_tool_with_content(tool_create)
+            imported_count += 1
+        except (ValueError, Exception): # Pydanticのバリデーションエラーなどもキャッチ
+            # 不正なデータはスキップ
+            continue
+
+    return {"imported_count": imported_count}
