@@ -105,7 +105,7 @@ jobs:
         run: uv sync --frozen
 
       - name: Run bandit
-        run: uv run bandit -r src/ -f json -o bandit-report.json || true
+        run: uv run bandit -r src/
 
       - name: Run pip-audit
         run: uv run pip-audit
