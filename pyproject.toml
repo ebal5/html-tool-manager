@@ -57,6 +57,13 @@ shell = "ruff check --fix . && ruff format ."
 [tool.poe.tasks.security]
 cmd = "bandit -r src/ -f json"
 
+[tool.poe.tasks.typecheck]
+cmd = "mypy src/"
+
+[tool.poe.tasks.typecheck-experimental]
+help = "Astral製の実験的型チェッカー ty を実行（参考用）"
+cmd = "ty check src/"
+
 [dependency-groups]
 dev = [
     "pytest",
@@ -68,6 +75,7 @@ dev = [
     "bandit",
     "pip-audit",
     "mypy",
+    "ty",  # Astral製の実験的型チェッカー（pre-alpha）
 ]
 
 [tool.mypy]

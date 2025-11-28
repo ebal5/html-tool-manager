@@ -4,10 +4,10 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    # 全てのPRで実行（main宛以外も含む）
 
 jobs:
-  lint:
+  lint-python:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,6 +28,19 @@ jobs:
 
       - name: Run ruff format check
         run: uv run ruff format --check .
+
+  lint-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run Biome
+        run: npx @biomejs/biome check static/js/
 
   test:
     runs-on: ubuntu-latest
