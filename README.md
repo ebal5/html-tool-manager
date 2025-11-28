@@ -1,5 +1,7 @@
 # HTMLツールマネージャー
 
+[![GitHub Container Registry](https://img.shields.io/badge/Container-ghcr.io-blue?logo=github)](https://github.com/ebal5/html-tool-manager/pkgs/container/html-tool-manager)
+
 単一ページのHTML/JSツールを管理・ホストするためのシンプルなWebアプリケーションです。このプロジェクトは、人間とAIアシスタントの共同作業によって開発されました。
 
 ## 主な機能
@@ -59,16 +61,46 @@
 
 ### Docker
 
+#### GitHub Container Registry からの取得（推奨）
+
+プリビルドされたDockerイメージがGitHub Container Registryで利用可能です。
+
+```bash
+# 最新バージョンを取得
+docker pull ghcr.io/ebal5/html-tool-manager:latest
+
+# 特定バージョンを取得
+docker pull ghcr.io/ebal5/html-tool-manager:0.1.0
+```
+
+**コンテナの実行:**
+
+```bash
+docker run -d -p 8888:80 \
+  -v html-tool-manager-data:/app/static/tools \
+  -v html-tool-manager-db:/app \
+  --name html-tool-manager-app \
+  ghcr.io/ebal5/html-tool-manager:latest
+```
+
+アプリケーションは `http://127.0.0.1:8888` で利用可能になります。
+
+#### ローカルでビルド
+
 1.  **Dockerイメージのビルド:**
     ```bash
-    docker build -t html-tool-manager:0.1.0 .
+    docker build -t html-tool-manager:local .
     ```
 
 2.  **Dockerコンテナの実行:**
-    このコマンドは、コンテナのポート80をホストのポート8888にマッピングします。また、`html-tool-manager-data` と `html-tool-manager-db` という名前のボリュームを作成し、アップロードされたツールファイルとSQLiteデータベースをそれぞれ永続化させます。
     ```bash
-    docker run -d -p 8888:80 -v html-tool-manager-data:/app/static/tools -v html-tool-manager-db:/app --name html-tool-manager-app html-tool-manager:0.1.0
+    docker run -d -p 8888:80 \
+      -v html-tool-manager-data:/app/static/tools \
+      -v html-tool-manager-db:/app \
+      --name html-tool-manager-app \
+      html-tool-manager:local
     ```
-    - アプリケーションは `http://127.0.0.1:8888` で利用可能になります。
-    - データベースファイル (`sql_app.db`) は `html-tool-manager-db` ボリュームに永続化されます。
-    - アップロードされたツールは `html-tool_manager-data` ボリュームに永続化されます。
+
+**ボリューム説明:**
+- `html-tool-manager-db`: データベースファイル (`sql_app.db`) の永続化
+- `html-tool-manager-data`: アップロードされたツールの永続化

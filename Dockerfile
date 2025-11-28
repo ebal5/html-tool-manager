@@ -17,5 +17,9 @@ RUN uv sync --frozen --no-dev
 COPY ./static ./static
 COPY ./templates ./templates
 
-# 6. アプリケーションを起動するコマンド
+# 6. ヘルスチェック
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:80/ || exit 1
+
+# 7. アプリケーションを起動するコマンド
 CMD ["uv", "run", "uvicorn", "html_tool_manager.main:app", "--host", "0.0.0.0", "--port", "80"]

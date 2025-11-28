@@ -1,18 +1,18 @@
-import os
-import uuid
 from typing import List
 
 import msgpack
-from fastapi import APIRouter, Depends, HTTPException, status, Query, File, UploadFile, Response
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
 from pydantic import BaseModel
 from sqlmodel import Session
 
 from html_tool_manager.core.db import get_session
-from html_tool_manager.models import ToolCreate, ToolRead, Tool
-from html_tool_manager.repositories import ToolRepository, SortOrder
+from html_tool_manager.models import ToolCreate, ToolRead
+from html_tool_manager.repositories import SortOrder, ToolRepository
+
 from .query_parser import parse_query
 
 router = APIRouter(prefix="/tools", tags=["tools"])
+
 
 @router.post("/", response_model=ToolRead, status_code=status.HTTP_201_CREATED)
 def create_tool(tool_data: ToolCreate, session: Session = Depends(get_session)):
@@ -23,6 +23,7 @@ def create_tool(tool_data: ToolCreate, session: Session = Depends(get_session)):
         return created_tool
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
 
 @router.get("/", response_model=List[ToolRead])
 def read_tools(
@@ -39,9 +40,10 @@ def read_tools(
         tools = repo.search_tools(parsed_query, sort=sort, offset=offset, limit=limit)
     else:
         tools = repo.get_all_tools(offset=offset, limit=limit)
-    
+
     # ToolReadモデルを使って明示的にレスポンスを構築
     return [ToolRead.model_validate(tool) for tool in tools]
+
 
 @router.get("/{tool_id}", response_model=ToolRead)
 def read_tool(tool_id: int, session: Session = Depends(get_session)):
@@ -50,9 +52,10 @@ def read_tool(tool_id: int, session: Session = Depends(get_session)):
     db_tool = repo.get_tool(tool_id)
     if not db_tool:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tool not found")
-    
+
     # ToolReadモデルを使って明示的にレスポンスを構築
     return ToolRead.model_validate(db_tool)
+
 
 @router.put("/{tool_id}", response_model=ToolRead)
 def update_tool(tool_id: int, tool_data: ToolCreate, session: Session = Depends(get_session)):
@@ -69,11 +72,12 @@ def update_tool(tool_id: int, tool_data: ToolCreate, session: Session = Depends(
             f.write(tool_data.html_content)
 
     # メタデータを更新
-    update_data = tool_data.model_dump(exclude_unset=True, exclude={'html_content'})
+    update_data = tool_data.model_dump(exclude_unset=True, exclude={"html_content"})
     tool_to_update.sqlmodel_update(update_data)
-    
+
     updated_tool = repo.update_tool(tool_id, tool_to_update)
     return updated_tool
+
 
 @router.delete("/{tool_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_tool(tool_id: int, session: Session = Depends(get_session)):
@@ -89,11 +93,9 @@ def delete_tool(tool_id: int, session: Session = Depends(get_session)):
 class ToolExportRequest(BaseModel):
     tool_ids: List[int]
 
+
 @router.post("/export", response_class=Response)
-def export_tools(
-    export_request: ToolExportRequest,
-    session: Session = Depends(get_session)
-):
+def export_tools(export_request: ToolExportRequest, session: Session = Depends(get_session)):
     """選択されたツールをMessagePack形式でエクスポートします。"""
     repo = ToolRepository(session)
     tools_to_export = []
@@ -107,7 +109,7 @@ def export_tools(
             except FileNotFoundError:
                 # ファイルが見つからない場合はスキップ
                 continue
-            
+
             tool_data = {
                 "name": tool.name,
                 "description": tool.description,
@@ -121,24 +123,22 @@ def export_tools(
 
     # MessagePackでシリアライズ
     packed_data = msgpack.packb(tools_to_export, use_bin_type=True)
-    
+
     return Response(
         content=packed_data,
         media_type="application/octet-stream",
-        headers={"Content-Disposition": 'attachment; filename="tools-export.pack"'}
+        headers={"Content-Disposition": 'attachment; filename="tools-export.pack"'},
     )
 
+
 @router.post("/import")
-async def import_tools(
-    file: UploadFile = File(...),
-    session: Session = Depends(get_session)
-):
+async def import_tools(file: UploadFile = File(...), session: Session = Depends(get_session)):
     """MessagePackファイルからツールをインポートします。"""
     if file.content_type != "application/octet-stream":
         raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail="Unsupported file type.")
-    
+
     contents = await file.read()
-    
+
     try:
         tools_to_import = msgpack.unpackb(contents, raw=False)
     except (msgpack.UnpackException, ValueError) as e:
@@ -152,7 +152,7 @@ async def import_tools(
             tool_create = ToolCreate(**tool_data)
             repo.create_tool_with_content(tool_create)
             imported_count += 1
-        except (ValueError, Exception): # Pydanticのバリデーションエラーなどもキャッチ
+        except (ValueError, Exception):  # Pydanticのバリデーションエラーなどもキャッチ
             # 不正なデータはスキップ
             continue
 

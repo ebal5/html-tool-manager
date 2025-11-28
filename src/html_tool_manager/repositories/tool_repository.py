@@ -3,14 +3,15 @@ import uuid
 from enum import Enum
 from typing import Dict, List, Optional
 
-from sqlalchemy import String, cast, Table, Column, Integer, Float, MetaData
-from sqlmodel import Session, select, text, SQLModel
+from sqlalchemy import Column, Float, Integer, MetaData, String, Table, cast
+from sqlmodel import Session, select, text
 
 from html_tool_manager.models import Tool, ToolCreate
 
 
 class SortOrder(str, Enum):
     """検索結果のソート順を定義するEnum。"""
+
     RELEVANCE = "relevance"
     NAME_ASC = "name_asc"
     NAME_DESC = "name_desc"
@@ -22,11 +23,11 @@ class ToolRepository:
     """ツールのデータベース操作をカプセル化するリポジトリクラス。"""
 
     def __init__(self, session: Session):
-        """
-        コンストラクタ。
+        """コンストラクタ。
 
         Args:
             session: データベースセッション。
+
         """
         self.session = session
 
@@ -36,10 +37,9 @@ class ToolRepository:
         self.session.commit()
         self.session.refresh(tool)
         return tool
-    
+
     def create_tool_with_content(self, tool_data: ToolCreate) -> Tool:
         """HTMLコンテンツをファイルに保存し、ツールをDBに作成します。"""
-        
         if not tool_data.html_content:
             # この関数ではhtml_contentが必須であると仮定
             raise ValueError("'html_content' is required.")
@@ -48,16 +48,16 @@ class ToolRepository:
         tool_dir = f"static/tools/{uuid.uuid4()}"
         os.makedirs(tool_dir, exist_ok=True)
         final_filepath = f"{tool_dir}/index.html"
-        
+
         with open(final_filepath, "w") as f:
             f.write(tool_data.html_content)
-        
+
         # DBに保存するモデルのfilepathを更新
         tool_data.filepath = final_filepath
-        
+
         # ToolCreateからToolオブジェクトを作成
         tool_to_db = Tool.model_validate(tool_data)
-        
+
         # 既存のcreate_toolを呼び出す
         return self.create_tool(tool_to_db)
 
@@ -78,34 +78,33 @@ class ToolRepository:
         limit: int = 100,
     ) -> List[Tool]:
         """指定されたクエリとソート順でツールを検索します。"""
-        
-        statement = select(Tool) # ベースとなるクエリ
+        statement = select(Tool)  # ベースとなるクエリ
 
         # FTS検索条件の組み立て
         fts_query_parts = []
         if parsed_query.get("term"):
             # "term*" のようにクォートで囲む必要はない
-            terms = " OR ".join([f'{term}*' for term in parsed_query["term"]])
+            terms = " OR ".join([f"{term}*" for term in parsed_query["term"]])
             fts_query_parts.append(f"({terms})")
         if parsed_query.get("name"):
             # name:j* のようにクォートで囲まない
-            terms = " OR ".join([f'{term}*' for term in parsed_query["name"]])
+            terms = " OR ".join([f"{term}*" for term in parsed_query["name"]])
             fts_query_parts.append(f"name:{terms}")
         if parsed_query.get("desc"):
-            terms = " OR ".join([f'{term}*' for term in parsed_query["desc"]])
+            terms = " OR ".join([f"{term}*" for term in parsed_query["desc"]])
             fts_query_parts.append(f"description:{terms}")
-        
+
         # FTS仮想テーブルをTableオブジェクトとして定義 (rankカラムも定義)
         fts_metadata = MetaData()
         tool_fts_table = Table("tool_fts", fts_metadata, Column("rowid", Integer), Column("rank", Float))
 
         if fts_query_parts:
             fts_match_query = " ".join(fts_query_parts)
-            statement = statement.join(
-                tool_fts_table, Tool.id == tool_fts_table.c.rowid
-            ).where(
-                text(f"{tool_fts_table.name} MATCH :fts_query")
-            ).params(fts_query=fts_match_query)
+            statement = (
+                statement.join(tool_fts_table, Tool.id == tool_fts_table.c.rowid)
+                .where(text(f"{tool_fts_table.name} MATCH :fts_query"))
+                .params(fts_query=fts_match_query)
+            )
 
         # タグ検索条件
         if parsed_query.get("tag"):
@@ -125,10 +124,10 @@ class ToolRepository:
         elif sort == SortOrder.UPDATED_DESC:
             statement = statement.order_by(Tool.updated_at.desc())
         else:
-            statement = statement.order_by(Tool.updated_at.desc()) # デフォルトソート
+            statement = statement.order_by(Tool.updated_at.desc())  # デフォルトソート
 
         statement = statement.offset(offset).limit(limit)
-        
+
         results = self.session.exec(statement).all()
         return results
 
@@ -137,11 +136,11 @@ class ToolRepository:
         tool = self.session.get(Tool, tool_id)
         if not tool:
             return None
-        
+
         tool_data = tool_update.model_dump(exclude_unset=True)
         for key, value in tool_data.items():
             setattr(tool, key, value)
-        
+
         self.session.add(tool)
         self.session.commit()
         self.session.refresh(tool)
