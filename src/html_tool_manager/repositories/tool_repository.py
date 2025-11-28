@@ -132,9 +132,6 @@ class ToolRepository:
         results = self.session.exec(statement).all()
         return results
 
-        results = self.session.exec(statement).all()
-        return results
-
     def update_tool(self, tool_id: int, tool_update: Tool) -> Optional[Tool]:
         """既存のツール情報を更新します。"""
         tool = self.session.get(Tool, tool_id)
