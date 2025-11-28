@@ -44,6 +44,15 @@ pythonpath = ["src"]
 cmd = "uvicorn html_tool_manager.main:app --reload"
 env = { PYTHONPATH = "src" }
 
+[tool.poe.tasks.test]
+cmd = "pytest -v"
+
+[tool.poe.tasks.lint]
+shell = "ruff check --fix . && ruff format ."
+
+[tool.poe.tasks.security]
+cmd = "bandit -r src/ -f json"
+
 [dependency-groups]
 dev = [
     "pytest",
@@ -51,5 +60,6 @@ dev = [
     "httpx",
     "ruff",
     "msgpack>=1.1.2",
+    "bandit",
 ]
 
