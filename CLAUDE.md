@@ -88,3 +88,12 @@ npx @biomejs/biome check --write static/js/
 - `desc:xxx` - 説明プレフィックス検索
 - `tag:xxx` - タグ部分一致検索
 - `"phrase"` - フレーズ検索
+
+## 注意事項
+
+### バリデーション定数の同期
+
+バリデーションルールは以下の2箇所で定義されており、**変更時は両方を更新すること**：
+
+- Python: `src/html_tool_manager/models/tool.py` (NAME_MAX_LENGTH等)
+- JavaScript: `static/js/validation.js` (ValidationRules)

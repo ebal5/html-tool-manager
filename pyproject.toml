@@ -82,5 +82,8 @@ python_version = "3.12"
 warn_return_any = true
 warn_unused_ignores = true
 disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = ["msgpack", "msgpack.*"]
 ignore_missing_imports = true
 
