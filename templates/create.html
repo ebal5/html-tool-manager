@@ -5,24 +5,24 @@
 {% block content %}
     <article>
         <header>
-            <h2>Create New Tool</h2>
+            <h2>新規ツール作成</h2>
         </header>
 
         <form id="create-tool-form">
-            <label for="name">Tool Name</label>
-            <input type="text" id="name" name="name" placeholder="My Awesome Tool" required>
-            
-            <label for="description">Description</label>
-            <textarea id="description" name="description" placeholder="A short description of what this tool does."></textarea>
-            
-            <label for="tags">Tags</label>
-            <input type="text" id="tags" name="tags" placeholder="calculator, text, utility">
-            <small>Comma separated values.</small>
+            <label for="name">ツール名</label>
+            <input type="text" id="name" name="name" placeholder="すごいツール" required>
 
-            <label for="html_content">HTML Content</label>
+            <label for="description">説明</label>
+            <textarea id="description" name="description" placeholder="このツールの説明"></textarea>
+
+            <label for="tags">タグ</label>
+            <input type="text" id="tags" name="tags" placeholder="計算, テキスト, ユーティリティ">
+            <small>カンマ区切りで入力</small>
+
+            <label for="html_content">HTMLコンテンツ</label>
             <textarea id="html_content" name="html_content" rows="10" placeholder="<!DOCTYPE html>..." required></textarea>
 
-            <button type="submit" id="submit-btn">Create Tool</button>
+            <button type="submit" id="submit-btn">作成</button>
         </form>
         <p id="message" style="margin-top: 1rem;"></p>
     </article>
@@ -56,12 +56,12 @@
             const messageDiv = document.getElementById('message');
             if (response.ok) {
                 const newTool = await response.json();
-                messageDiv.innerHTML = `✅ Tool '<strong>${newTool.name}</strong>' created successfully. <a href="/tools/view/${newTool.id}">View it here</a>.`;
+                messageDiv.innerHTML = `ツール「<strong>${newTool.name}</strong>」を作成しました。<a href="/tools/view/${newTool.id}">表示</a> | <a href="/">一覧に戻る</a>`;
                 messageDiv.style.color = 'var(--pico-color-green-500)';
                 document.getElementById('create-tool-form').reset();
             } else {
                 const errorData = await response.json();
-                messageDiv.textContent = `❌ Error: ${errorData.detail || 'An unknown error occurred.'}`;
+                messageDiv.textContent = `エラー: ${errorData.detail || '不明なエラーが発生しました'}`;
                 messageDiv.style.color = 'var(--pico-color-red-500)';
             }
             submitBtn.removeAttribute('aria-busy');

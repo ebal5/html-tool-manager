@@ -3,27 +3,39 @@
 {% block title %}Edit Tool - HTML Tool Manager{% endblock %}
 
 {% block content %}
+    <style>
+        .edit-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .edit-header h2 {
+            margin-bottom: 0;
+        }
+    </style>
+
     <article>
-        <header>
-            <h2>Edit Tool (ID: {{ tool_id }})</h2>
+        <header class="edit-header">
+            <h2>ツール編集 (ID: {{ tool_id }})</h2>
+            <a href="/tools/view/{{ tool_id }}" role="button" class="secondary outline">表示</a>
         </header>
 
         <form id="edit-tool-form">
-            <label for="name">Tool Name</label>
-            <input type="text" id="name" name="name" placeholder="My Awesome Tool" required>
-            
-            <label for="description">Description</label>
-            <textarea id="description" name="description" placeholder="A short description of what this tool does."></textarea>
-            
-            <label for="tags">Tags</label>
-            <input type="text" id="tags" name="tags" placeholder="calculator, text, utility">
-            <small>Comma separated values.</small>
+            <label for="name">ツール名</label>
+            <input type="text" id="name" name="name" placeholder="すごいツール" required>
+
+            <label for="description">説明</label>
+            <textarea id="description" name="description" placeholder="このツールの説明"></textarea>
+
+            <label for="tags">タグ</label>
+            <input type="text" id="tags" name="tags" placeholder="計算, テキスト, ユーティリティ">
+            <small>カンマ区切りで入力</small>
 
             <div id="source-section">
                 <!-- Content will be loaded here by JavaScript -->
             </div>
             
-            <button type="submit" id="submit-btn">Update Tool</button>
+            <button type="submit" id="submit-btn">更新</button>
         </form>
         <p id="message" style="margin-top: 1rem;"></p>
     </article>
@@ -64,7 +76,7 @@
                     sourceSection.innerHTML = ''; // Clear loading message
                     const label = document.createElement('label');
                     label.setAttribute('for', 'html_content');
-                    label.textContent = 'HTML Content';
+                    label.textContent = 'HTMLコンテンツ';
 
                     const textarea = document.createElement('textarea');
                     textarea.id = 'html_content';
@@ -77,13 +89,13 @@
                 } else {
                     // Display a read-only filepath
                     sourceSection.innerHTML = `
-                        <label>File Path</label>
+                        <label>ファイルパス</label>
                         <input type="text" id="filepath" name="filepath" value="${originalFilepath}" readonly>
                     `;
                 }
 
             } catch (error) {
-                messageDiv.textContent = `❌ Error loading tool data: ${error.message}`;
+                messageDiv.textContent = `エラー: ツールデータの読み込みに失敗しました - ${error.message}`;
                 messageDiv.style.color = 'var(--pico-color-red-500)';
                 form.style.display = 'none';
             }
@@ -113,11 +125,11 @@
 
             if (response.ok) {
                 const updatedTool = await response.json();
-                messageDiv.innerHTML = `✅ Tool '<strong>${updatedTool.name}</strong>' updated successfully. <a href="/">Go back to list</a>.`;
+                messageDiv.innerHTML = `ツール「<strong>${updatedTool.name}</strong>」を更新しました。<a href="/tools/view/${toolId}">表示</a> | <a href="/">一覧に戻る</a>`;
                 messageDiv.style.color = 'var(--pico-color-green-500)';
             } else {
                 const errorData = await response.json();
-                messageDiv.textContent = `❌ Error: ${errorData.detail || 'An unknown error occurred.'}`;
+                messageDiv.textContent = `エラー: ${errorData.detail || '不明なエラーが発生しました'}`;
                 messageDiv.style.color = 'var(--pico-color-red-500)';
             }
             submitBtn.removeAttribute('aria-busy');
