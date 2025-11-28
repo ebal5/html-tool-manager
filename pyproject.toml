@@ -10,6 +10,7 @@ dependencies = [
     "jinja2",
     "pydantic-settings",
     "python-multipart>=0.0.20",
+    "msgpack>=1.1.2",
 ]
 
 [project.optional-dependencies]
@@ -36,6 +37,9 @@ ignore = [
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
 
 [tool.poe.tasks.dev]
 cmd = "uvicorn html_tool_manager.main:app --reload"
