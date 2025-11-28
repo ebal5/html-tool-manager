@@ -130,46 +130,45 @@ wheels = [
 [[package]]
 name = "html-tool-manager"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "fastapi" },
     { name = "jinja2" },
+    { name = "msgpack" },
     { name = "pydantic-settings" },
     { name = "python-multipart" },
     { name = "sqlmodel" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
-[package.optional-dependencies]
+[package.dev-dependencies]
 dev = [
     { name = "httpx" },
+    { name = "msgpack" },
     { name = "poethepoet" },
     { name = "pytest" },
     { name = "ruff" },
 ]
 
-[package.dev-dependencies]
-dev = [
-    { name = "msgpack" },
-]
-
 [package.metadata]
 requires-dist = [
     { name = "fastapi" },
-    { name = "httpx", marker = "extra == 'dev'" },
     { name = "jinja2" },
-    { name = "poethepoet", marker = "extra == 'dev'" },
+    { name = "msgpack", specifier = ">=1.1.2" },
     { name = "pydantic-settings" },
-    { name = "pytest", marker = "extra == 'dev'" },
     { name = "python-multipart", specifier = ">=0.0.20" },
-    { name = "ruff", marker = "extra == 'dev'" },
     { name = "sqlmodel" },
     { name = "uvicorn", extras = ["standard"] },
 ]
-provides-extras = ["dev"]
 
 [package.metadata.requires-dev]
-dev = [{ name = "msgpack", specifier = ">=1.1.2" }]
+dev = [
+    { name = "httpx" },
+    { name = "msgpack", specifier = ">=1.1.2" },
+    { name = "poethepoet" },
+    { name = "pytest" },
+    { name = "ruff" },
+]
 
 [[package]]
 name = "httpcore"
