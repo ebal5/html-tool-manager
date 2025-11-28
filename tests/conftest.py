@@ -17,6 +17,7 @@ from html_tool_manager.main import app
 
 
 def override_get_session():
+    """テスト用のセッションを提供する依存関係オーバーライド関数。"""
     # client_fixtureで設定されるテスト用engineのセッションを返す
     # ここでは Session(core_db.engine) を使うことで、client_fixtureで設定されたエンジンを参照する
     with Session(core_db.engine) as session:
@@ -28,6 +29,7 @@ app.dependency_overrides[get_session] = override_get_session
 
 @pytest.fixture(name="session")
 def session_fixture():
+    """テスト用のインメモリSQLiteデータベースセッションを提供するフィクスチャ。"""
     # 各テストで新しいエンジンを作成
     engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
 
@@ -48,5 +50,6 @@ def session_fixture():
 
 @pytest.fixture(name="client")
 def client_fixture(session: Session):  # sessionフィクスチャに依存
+    """FastAPIアプリケーションのテストクライアントを提供するフィクスチャ。"""
     client = TestClient(app)
     yield client
