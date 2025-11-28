@@ -351,7 +351,6 @@ dependencies = [
 dev = [
     { name = "bandit" },
     { name = "httpx" },
-    { name = "msgpack" },
     { name = "mypy" },
     { name = "pip-audit" },
     { name = "poethepoet" },
@@ -376,7 +375,6 @@ requires-dist = [
 dev = [
     { name = "bandit" },
     { name = "httpx" },
-    { name = "msgpack", specifier = ">=1.1.2" },
     { name = "mypy" },
     { name = "pip-audit" },
     { name = "poethepoet" },

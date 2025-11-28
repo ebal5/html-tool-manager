@@ -71,7 +71,6 @@ dev = [
     "poethepoet",
     "httpx",
     "ruff",
-    "msgpack>=1.1.2",
     "bandit",
     "pip-audit",
     "mypy",
