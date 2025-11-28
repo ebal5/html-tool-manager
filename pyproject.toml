@@ -12,14 +12,6 @@ dependencies = [
     "python-multipart>=0.0.20",
 ]
 
-[project.optional-dependencies]
-dev = [
-    "pytest",
-    "poethepoet",
-    "httpx",
-    "ruff",
-]
-
 [tool.ruff]
 line-length = 120
 target-version = "py312"
@@ -43,6 +35,10 @@ env = { PYTHONPATH = "src" }
 
 [dependency-groups]
 dev = [
+    "pytest",
+    "poethepoet",
+    "httpx",
+    "ruff",
     "msgpack>=1.1.2",
 ]
 
