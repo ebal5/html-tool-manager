@@ -136,9 +136,7 @@ def export_tools(export_request: ToolExportRequest, session: Session = Depends(g
 
 
 @router.post("/import")
-async def import_tools(
-    file: UploadFile = File(...), session: Session = Depends(get_session)
-) -> Dict[str, int]:
+async def import_tools(file: UploadFile = File(...), session: Session = Depends(get_session)) -> Dict[str, int]:
     """MessagePackファイルからツールをインポートします。"""
     if file.content_type != "application/octet-stream":
         raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail="Unsupported file type.")
