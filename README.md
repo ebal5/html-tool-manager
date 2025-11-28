@@ -1,5 +1,6 @@
 # HTMLツールマネージャー
 
+[![CI](https://github.com/ebal5/html-tool-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/ebal5/html-tool-manager/actions/workflows/ci.yml)
 [![GitHub Container Registry](https://img.shields.io/badge/Container-ghcr.io-blue?logo=github)](https://github.com/ebal5/html-tool-manager/pkgs/container/html-tool-manager)
 
 単一ページのHTML/JSツールを管理・ホストするためのシンプルなWebアプリケーションです。このプロジェクトは、人間とAIアシスタントの共同作業によって開発されました。
