@@ -1,9 +1,10 @@
 import os
 import uuid
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 from sqlalchemy import Column, Float, Integer, MetaData, String, Table, cast
+from sqlalchemy.sql.elements import ColumnElement
 from sqlmodel import Session, select, text
 
 from html_tool_manager.models import Tool, ToolCreate
@@ -100,7 +101,7 @@ class ToolRepository:
 
         if fts_query_parts:
             fts_match_query = " ".join(fts_query_parts)
-            join_condition: Any = Tool.id == tool_fts_table.c.rowid
+            join_condition: ColumnElement[bool] = Tool.id == tool_fts_table.c.rowid  # type: ignore[assignment]
             statement = (
                 statement.join(tool_fts_table, join_condition)
                 .where(text(f"{tool_fts_table.name} MATCH :fts_query"))

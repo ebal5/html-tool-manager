@@ -5,7 +5,9 @@ from typing import List, Optional
 from pydantic import field_validator
 from sqlmodel import JSON, Column, Field, SQLModel
 
-# 制御文字のパターン（改行・タブを除く）
+# 制御文字のパターン
+# 許可: \t (0x09), \n (0x0a)
+# 禁止: \r (0x0d) を含む他の制御文字 - Windows改行(\r\n)は\nのみに正規化される想定
 CONTROL_CHARS_PATTERN = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 
 # バリデーション定数
@@ -65,7 +67,9 @@ class ToolBase(SQLModel):
                 raise ValueError("タグは文字列で指定してください")
             tag = tag.strip()
             if not tag:
-                continue  # 空のタグはスキップ
+                # 空文字やスペースのみのタグは暗黙的に除外される
+                # 例: ["tag1", "", "  ", "tag2"] → ["tag1", "tag2"]
+                continue
             if len(tag) < TAG_MIN_LENGTH or len(tag) > TAG_MAX_LENGTH:
                 raise ValueError(f"各タグは{TAG_MIN_LENGTH}〜{TAG_MAX_LENGTH}文字で指定してください")
             if CONTROL_CHARS_PATTERN.search(tag):

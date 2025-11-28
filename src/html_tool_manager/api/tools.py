@@ -75,9 +75,8 @@ def update_tool(tool_id: int, tool_data: ToolCreate, session: Session = Depends(
     update_data = tool_data.model_dump(exclude_unset=True, exclude={"html_content"})
     tool_to_update.sqlmodel_update(update_data)
 
+    # 存在確認は上で済んでいるため、update_toolは必ずToolを返す
     updated_tool = repo.update_tool(tool_id, tool_to_update)
-    if not updated_tool:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tool not found")
     return ToolRead.model_validate(updated_tool)
 
 
