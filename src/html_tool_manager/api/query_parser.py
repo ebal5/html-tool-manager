@@ -2,13 +2,11 @@ import re
 from typing import Dict, List
 
 # 'key:"value"' または 'key:value' 形式のパターンと、独立した単語を見つけるための正規表現
-QUERY_REGEX = re.compile(
-    r'(\w+):"([^"]+)"|(\w+):(\S+)|"([^"]+)"|(\S+)'
-)
+QUERY_REGEX = re.compile(r'(\w+):"([^"]+)"|(\w+):(\S+)|"([^"]+)"|(\S+)')
+
 
 def parse_query(query_str: str) -> Dict[str, List[str]]:
-    """
-    検索クエリ文字列を構造化された辞書にパースします。
+    """検索クエリ文字列を構造化された辞書にパースします。
 
     Args:
         query_str: 生の検索クエリ文字列。
@@ -16,6 +14,7 @@ def parse_query(query_str: str) -> Dict[str, List[str]]:
     Returns:
         'name', 'desc', 'tag', 'term' などのキーを持つ辞書。
         各キーにはパースされた値のリストが含まれます。
+
     """
     parsed: Dict[str, List[str]] = {
         "name": [],
@@ -47,5 +46,5 @@ def parse_query(query_str: str) -> Dict[str, List[str]]:
         # value
         elif match.group(6):
             parsed["term"].append(match.group(6).strip())
-            
+
     return parsed
