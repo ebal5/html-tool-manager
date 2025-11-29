@@ -58,6 +58,13 @@ argument-hint: [version: patch|minor|major|x.y.z]
    - HIGH/MEDIUM の問題があれば中断
    - LOW のみなら警告として続行可
 
+4. **フロントエンドLintチェック**
+   ```bash
+   npx @biomejs/biome check static/js/
+   ```
+   - エラーがあれば中断
+   - 修正が必要な場合: `npx @biomejs/biome check --write static/js/`
+
 ## Phase 3: Docker動作確認
 
 1. **既存コンテナの確認とクリーンアップ**
@@ -86,15 +93,15 @@ argument-hint: [version: patch|minor|major|x.y.z]
    ```
 
 5. **ヘルスチェック**（リトライ付き）
-   - 最大30秒間、5秒間隔でヘルスチェックを実行:
+   - 最大30秒間、5秒間隔でヘルスチェックを実行（以下を単一スクリプトとして実行）:
      ```bash
      HEALTH_STATUS="unhealthy"
      for i in 1 2 3 4 5 6; do
-       sleep 5
        if curl -s -f http://localhost:8888/ > /dev/null 2>&1; then
          HEALTH_STATUS="healthy"
          break
        fi
+       sleep 5
      done
      echo "$HEALTH_STATUS"
      ```
