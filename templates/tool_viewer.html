@@ -91,6 +91,7 @@
                     toolContentEl.innerHTML = '';
                     const iframe = document.createElement('iframe');
                     iframe.src = '/' + tool.filepath;
+                    iframe.title = tool.name; // アクセシビリティ: スクリーンリーダー用
                     toolContentEl.appendChild(iframe);
                 } else {
                     showError('このツールは表示できません。ファイルパスが無効です。');
