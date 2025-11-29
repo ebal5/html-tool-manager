@@ -60,23 +60,45 @@ argument-hint: [version: patch|minor|major|x.y.z]
 
 ## Phase 3: Docker動作確認
 
-1. **ビルド**
+1. **既存コンテナの確認とクリーンアップ**
+   ```bash
+   docker ps -a --filter name=htm-release-test --format '{{.Names}}'
+   ```
+   - 既存のコンテナがあれば先に削除:
+     ```bash
+     docker stop htm-release-test 2>/dev/null; docker rm htm-release-test 2>/dev/null
+     ```
+
+2. **ポート使用状況の確認**
+   ```bash
+   curl -s -o /dev/null -w "%{http_code}" http://localhost:8888/ 2>/dev/null || echo "port_free"
+   ```
+   - ポート8888が使用中の場合: 使用中のサービスを報告し、停止を促して中断
+
+3. **ビルド**
    ```bash
    docker build -t html-tool-manager:release-test .
    ```
 
-2. **起動**
+4. **起動**
    ```bash
    docker run -d -p 8888:80 --name htm-release-test html-tool-manager:release-test
    ```
 
-3. **ヘルスチェック**（起動を5秒待ってから実行）
-   ```bash
-   sleep 5 && curl -s -o /dev/null -w "%{http_code}" http://localhost:8888/
-   ```
-   - 200が返れば成功
+5. **ヘルスチェック**（リトライ付き）
+   - 最大30秒間、5秒間隔でヘルスチェックを実行:
+     ```bash
+     for i in 1 2 3 4 5 6; do
+       sleep 5
+       STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8888/)
+       if [ "$STATUS" = "200" ]; then echo "healthy"; break; fi
+       if [ $i -eq 6 ]; then echo "unhealthy"; fi
+     done
+     ```
+   - `healthy` が返れば成功
+   - `unhealthy` の場合: `docker logs htm-release-test` でログを確認して報告
 
-4. **クリーンアップ**（成功・失敗に関わらず必ず実行）
+6. **クリーンアップ**（成功・失敗に関わらず必ず実行）
    ```bash
    docker stop htm-release-test && docker rm htm-release-test
    docker rmi html-tool-manager:release-test
@@ -86,11 +108,22 @@ argument-hint: [version: patch|minor|major|x.y.z]
 
 1. **最新タグと変更履歴を取得**
    ```bash
-   git describe --tags --abbrev=0
-   git log $(git describe --tags --abbrev=0)..HEAD --oneline
+   git describe --tags --abbrev=0 2>/dev/null || echo "NO_TAGS"
    ```
+   - タグが存在する場合:
+     ```bash
+     git log $(git describe --tags --abbrev=0)..HEAD --oneline
+     ```
+   - **タグが存在しない場合（初回リリース）**:
+     - `NO_TAGS` が返る
+     - 全コミット履歴を取得:
+       ```bash
+       git log --oneline
+       ```
+     - 初回リリースとして `0.1.0` を基準に提案
 
 2. **バージョンを決定**
+   - **初回リリースの場合**: 引数がなければ `0.1.0` を提案
    - 引数がある場合: 引数に従ってバージョンを計算
    - 引数がない場合: 変更内容を分析して提案
      - `feat:` があれば minor を提案
