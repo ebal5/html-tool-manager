@@ -40,14 +40,35 @@ uv run pytest
 
 ### コードスタイル
 
+#### Python (ruff)
+
 ```bash
+# lint修正とフォーマット
 ruff check --fix && ruff format
+
+# CI前の確認（両方パスすることを確認）
+ruff check . && ruff format --check .
+```
+
+**重要**: `ruff check --fix`と`ruff format`は必ずセットで実行する。
+checkでインポート順序（I001）を修正しても、formatを実行しないと括弧の配置などが更新されずCIで失敗する。
+
+#### フロントエンド (Biome)
+
+```bash
+# lint/format チェック
+npx @biomejs/biome check static/js/
+
+# 自動修正
+npx @biomejs/biome check --write static/js/
 ```
 
 ### コミット前チェック
 
-- テスト実行
-- lint/format確認
+- テスト実行: `uv run pytest`
+- Python lint: `ruff check . && ruff format --check .`
+- フロント lint: `npx @biomejs/biome check static/js/`
+- 型チェック: `uv run mypy src/`
 
 ## API概要
 
@@ -67,3 +88,12 @@ ruff check --fix && ruff format
 - `desc:xxx` - 説明プレフィックス検索
 - `tag:xxx` - タグ部分一致検索
 - `"phrase"` - フレーズ検索
+
+## 注意事項
+
+### バリデーション定数の同期
+
+バリデーションルールは以下の2箇所で定義されており、**変更時は両方を更新すること**：
+
+- Python: `src/html_tool_manager/models/tool.py` (NAME_MAX_LENGTH等)
+- JavaScript: `static/js/validation.js` (ValidationRules)

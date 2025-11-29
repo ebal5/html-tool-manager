@@ -1,5 +1,6 @@
 # HTMLツールマネージャー
 
+[![CI](https://github.com/ebal5/html-tool-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/ebal5/html-tool-manager/actions/workflows/ci.yml)
 [![GitHub Container Registry](https://img.shields.io/badge/Container-ghcr.io-blue?logo=github)](https://github.com/ebal5/html-tool-manager/pkgs/container/html-tool-manager)
 
 単一ページのHTML/JSツールを管理・ホストするためのシンプルなWebアプリケーションです。このプロジェクトは、人間とAIアシスタントの共同作業によって開発されました。
@@ -58,6 +59,24 @@
     ```bash
     uv run pytest
     ```
+
+5.  **コード品質チェック:**
+    ```bash
+    # Python lint/format
+    uv run poe lint
+
+    # フロントエンド lint/format (Biome)
+    npx @biomejs/biome check static/js/
+
+    # 型チェック (mypy)
+    uv run poe typecheck
+
+    # 型チェック 実験的 (ty - Astral製、pre-alpha)
+    uv run poe typecheck-experimental
+    ```
+
+    > **Note:** [ty](https://docs.astral.sh/ty/) は Astral (ruff, uv の開発元) が開発中の高速型チェッカーです。
+    > 現在 pre-alpha のため参考用として導入しています。本番の型チェックには mypy を使用してください。
 
 ### Docker
 

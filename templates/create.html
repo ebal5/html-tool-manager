@@ -9,13 +9,13 @@
         </header>
 
         <form id="create-tool-form">
-            <label for="name">ツール名</label>
-            <input type="text" id="name" name="name" placeholder="すごいツール" required>
+            <label for="name">ツール名 <small>(1-100文字)</small></label>
+            <input type="text" id="name" name="name" placeholder="すごいツール" required maxlength="100">
 
-            <label for="description">説明</label>
-            <textarea id="description" name="description" placeholder="このツールの説明"></textarea>
+            <label for="description">説明 <small>(最大1000文字)</small></label>
+            <textarea id="description" name="description" placeholder="このツールの説明" maxlength="1000"></textarea>
 
-            <label for="tags">タグ</label>
+            <label for="tags">タグ <small>(最大20個、各1-50文字)</small></label>
             <input type="text" id="tags" name="tags" placeholder="計算, テキスト, ユーティリティ">
             <small>カンマ区切りで入力</small>
 
@@ -27,6 +27,7 @@
         <p id="message" style="margin-top: 1rem;"></p>
     </article>
 
+    <script src="/static/js/validation.js"></script>
     <script>
         // エラーメッセージを安全に表示するヘルパー関数
         function showError(messageDiv, errorText) {
@@ -35,23 +36,33 @@
             messageDiv.style.color = 'var(--pico-color-red-500)';
         }
 
+        // リアルタイムバリデーションの設定
+        setupRealtimeValidation(document.getElementById('name'), validateName);
+        setupRealtimeValidation(document.getElementById('description'), validateDescription);
+        setupRealtimeValidation(document.getElementById('tags'), validateTags);
+
         // Form submission logic
         document.getElementById('create-tool-form').addEventListener('submit', async function(event) {
             event.preventDefault();
             const submitBtn = document.getElementById('submit-btn');
             const messageDiv = document.getElementById('message');
-            submitBtn.setAttribute('aria-busy', 'true');
 
-            const name = document.getElementById('name').value;
-            const description = document.getElementById('description').value;
-            const tags = document.getElementById('tags').value.split(',').map(tag => tag.trim()).filter(tag => tag !== '');
-
-            const toolData = {
-                name: name,
-                description: description,
-                tags: tags,
+            // フォームデータの収集
+            const formData = {
+                name: document.getElementById('name').value,
+                description: document.getElementById('description').value,
+                tags: document.getElementById('tags').value,
                 html_content: document.getElementById('html_content').value
             };
+
+            // クライアント側バリデーション
+            const validation = validateToolForm(formData);
+            if (!validation.valid) {
+                showValidationErrors(messageDiv, validation.errors);
+                return;
+            }
+
+            submitBtn.setAttribute('aria-busy', 'true');
 
             try {
                 const response = await fetch('/api/tools/', {
@@ -59,7 +70,7 @@
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify(toolData)
+                    body: JSON.stringify(validation.data)
                 });
 
                 if (response.ok) {

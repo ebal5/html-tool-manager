@@ -21,25 +21,26 @@
         </header>
 
         <form id="edit-tool-form">
-            <label for="name">ツール名</label>
-            <input type="text" id="name" name="name" placeholder="すごいツール" required>
+            <label for="name">ツール名 <small>(1-100文字)</small></label>
+            <input type="text" id="name" name="name" placeholder="すごいツール" required maxlength="100">
 
-            <label for="description">説明</label>
-            <textarea id="description" name="description" placeholder="このツールの説明"></textarea>
+            <label for="description">説明 <small>(最大1000文字)</small></label>
+            <textarea id="description" name="description" placeholder="このツールの説明" maxlength="1000"></textarea>
 
-            <label for="tags">タグ</label>
+            <label for="tags">タグ <small>(最大20個、各1-50文字)</small></label>
             <input type="text" id="tags" name="tags" placeholder="計算, テキスト, ユーティリティ">
             <small>カンマ区切りで入力</small>
 
             <div id="source-section">
                 <!-- Content will be loaded here by JavaScript -->
             </div>
-            
+
             <button type="submit" id="submit-btn">更新</button>
         </form>
         <p id="message" style="margin-top: 1rem;"></p>
     </article>
 
+    <script src="/static/js/validation.js"></script>
     <script>
         const TOOL_PATH_PREFIX = 'static/tools/';
         const toolId = {{ tool_id }};
@@ -60,6 +61,11 @@
             messageDiv.textContent = 'エラー: ' + errorText;
             messageDiv.style.color = 'var(--pico-color-red-500)';
         }
+
+        // リアルタイムバリデーションの設定
+        setupRealtimeValidation(nameInput, validateName);
+        setupRealtimeValidation(descriptionInput, validateDescription);
+        setupRealtimeValidation(tagsInput, validateTags);
 
         async function loadToolData() {
             try {
@@ -119,18 +125,34 @@
 
         form.addEventListener('submit', async function(event) {
             event.preventDefault();
+
+            // フォームデータの収集
+            const formData = {
+                name: nameInput.value,
+                description: descriptionInput.value,
+                tags: tagsInput.value,
+                html_content: isPastedContent ? document.getElementById('html_content').value : null
+            };
+
+            // クライアント側バリデーション
+            const validation = validateToolForm(formData);
+            if (!validation.valid) {
+                showValidationErrors(messageDiv, validation.errors);
+                return;
+            }
+
             submitBtn.setAttribute('aria-busy', 'true');
 
             const updatedData = {
-                name: nameInput.value,
-                description: descriptionInput.value,
-                tags: tagsInput.value.split(',').map(tag => tag.trim()).filter(tag => tag !== ''),
-                filepath: originalFilepath // Always send the original filepath
+                name: validation.data.name,
+                description: validation.data.description,
+                tags: validation.data.tags,
+                filepath: originalFilepath
             };
 
             // If it was a pasted tool, include the updated HTML content
             if (isPastedContent) {
-                updatedData.html_content = document.getElementById('html_content').value;
+                updatedData.html_content = validation.data.html_content;
             }
 
             try {
