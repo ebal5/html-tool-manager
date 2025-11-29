@@ -1,4 +1,4 @@
-from typing import List
+from typing import Dict, List, Optional
 
 import msgpack
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
@@ -15,12 +15,12 @@ router = APIRouter(prefix="/tools", tags=["tools"])
 
 
 @router.post("/", response_model=ToolRead, status_code=status.HTTP_201_CREATED)
-def create_tool(tool_data: ToolCreate, session: Session = Depends(get_session)):
+def create_tool(tool_data: ToolCreate, session: Session = Depends(get_session)) -> ToolRead:
     """新しいツールを作成します。"""
     repo = ToolRepository(session)
     try:
         created_tool = repo.create_tool_with_content(tool_data)
-        return created_tool
+        return ToolRead.model_validate(created_tool)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
@@ -28,11 +28,11 @@ def create_tool(tool_data: ToolCreate, session: Session = Depends(get_session)):
 @router.get("/", response_model=List[ToolRead])
 def read_tools(
     session: Session = Depends(get_session),
-    q: str = Query(None, description="検索クエリ（例: 'name:', 'desc:', 'tag:'）"),
+    q: Optional[str] = Query(None, description="検索クエリ（例: 'name:', 'desc:', 'tag:'）"),
     sort: SortOrder = Query(SortOrder.RELEVANCE, description="ソート順"),
     offset: int = 0,
     limit: int = 100,
-):
+) -> List[ToolRead]:
     """ツールの一覧を取得、または検索します。"""
     repo = ToolRepository(session)
     if q:
@@ -46,7 +46,7 @@ def read_tools(
 
 
 @router.get("/{tool_id}", response_model=ToolRead)
-def read_tool(tool_id: int, session: Session = Depends(get_session)):
+def read_tool(tool_id: int, session: Session = Depends(get_session)) -> ToolRead:
     """IDを指定して単一のツールを取得します。"""
     repo = ToolRepository(session)
     db_tool = repo.get_tool(tool_id)
@@ -58,7 +58,7 @@ def read_tool(tool_id: int, session: Session = Depends(get_session)):
 
 
 @router.put("/{tool_id}", response_model=ToolRead)
-def update_tool(tool_id: int, tool_data: ToolCreate, session: Session = Depends(get_session)):
+def update_tool(tool_id: int, tool_data: ToolCreate, session: Session = Depends(get_session)) -> ToolRead:
     """既存のツールを更新します。"""
     repo = ToolRepository(session)
     tool_to_update = repo.get_tool(tool_id)
@@ -75,27 +75,30 @@ def update_tool(tool_id: int, tool_data: ToolCreate, session: Session = Depends(
     update_data = tool_data.model_dump(exclude_unset=True, exclude={"html_content"})
     tool_to_update.sqlmodel_update(update_data)
 
+    # 存在確認は上で済んでいるため、update_toolは必ずToolを返す
     updated_tool = repo.update_tool(tool_id, tool_to_update)
-    return updated_tool
+    return ToolRead.model_validate(updated_tool)
 
 
 @router.delete("/{tool_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_tool(tool_id: int, session: Session = Depends(get_session)):
+def delete_tool(tool_id: int, session: Session = Depends(get_session)) -> None:
     """ツールを削除します。"""
     repo = ToolRepository(session)
     tool = repo.delete_tool(tool_id)
     if not tool:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tool not found")
-    # 204 No Contentのため、このレスポンスボディは実際にはクライアントに送信されない
-    return {"message": "Tool deleted successfully"}
+    # 204 No Contentのため、レスポンスボディは返さない
+    return None
 
 
 class ToolExportRequest(BaseModel):
+    """エクスポートするツールのIDリストを受け取るリクエストモデル。"""
+
     tool_ids: List[int]
 
 
 @router.post("/export", response_class=Response)
-def export_tools(export_request: ToolExportRequest, session: Session = Depends(get_session)):
+def export_tools(export_request: ToolExportRequest, session: Session = Depends(get_session)) -> Response:
     """選択されたツールをMessagePack形式でエクスポートします。"""
     repo = ToolRepository(session)
     tools_to_export = []
@@ -132,7 +135,7 @@ def export_tools(export_request: ToolExportRequest, session: Session = Depends(g
 
 
 @router.post("/import")
-async def import_tools(file: UploadFile = File(...), session: Session = Depends(get_session)):
+async def import_tools(file: UploadFile = File(...), session: Session = Depends(get_session)) -> Dict[str, int]:
     """MessagePackファイルからツールをインポートします。"""
     if file.content_type != "application/octet-stream":
         raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail="Unsupported file type.")

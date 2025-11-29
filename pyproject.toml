@@ -23,14 +23,18 @@ dependencies = [
 [tool.ruff]
 line-length = 120
 target-version = "py312"
-select = ["E", "F", "W", "I", "N", "D"]
 
 [tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "D"]
 ignore = [
     "D100", # Missing docstring in public module
     "D104", # Missing docstring in public package
     "D105", # Missing docstring in public method
     "D107", # Missing docstring in __init__
+    "D203", # one-blank-line-before-class (incompatible with D211)
+    "D213", # multi-line-summary-second-line (incompatible with D212)
+    "D400", # First line should end with a period
+    "D415", # First line should end with a period, question mark, or exclamation point
 ]
 
 [tool.ruff.format]
@@ -53,13 +57,33 @@ shell = "ruff check --fix . && ruff format ."
 [tool.poe.tasks.security]
 cmd = "bandit -r src/ -f json"
 
+[tool.poe.tasks.typecheck]
+cmd = "mypy src/"
+
+[tool.poe.tasks.typecheck-experimental]
+help = "Astral製の実験的型チェッカー ty を実行（参考用）"
+cmd = "ty check src/"
+
 [dependency-groups]
 dev = [
     "pytest",
+    "pytest-cov",
     "poethepoet",
     "httpx",
     "ruff",
-    "msgpack>=1.1.2",
     "bandit",
+    "pip-audit",
+    "mypy",
+    "ty",  # Astral製の実験的型チェッカー（pre-alpha）
 ]
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = ["msgpack", "msgpack.*"]
+ignore_missing_imports = true
 
