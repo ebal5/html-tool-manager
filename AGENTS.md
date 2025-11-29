@@ -17,15 +17,52 @@
 - SQLModel使用時はPydanticとSQLAlchemyの両方の特性を考慮
 - テストはインメモリSQLiteで実行（`conftest.py`参照）
 
+### Lint/Format ベストプラクティス
+
+#### Python (ruff)
+
+- **checkとformatは必ずセット**: `ruff check --fix`後に`ruff format`も実行
+- **push前に確認**: `ruff check . && ruff format --check .` で両方パスすることを確認
+- checkでインポート順序を修正しても、formatで括弧配置等が変わることがある
+
+#### フロントエンド (Biome)
+
+- **グローバル無効化よりインライン無効化を優先**
+- 特定箇所のみ無効化する場合は `biome-ignore` コメントを使用:
+  ```javascript
+  // biome-ignore lint/correctness/noUnusedVariables: HTMLから呼び出される関数
+  function myFunction() { ... }
+  ```
+- HTMLテンプレートから呼び出される関数は「未使用」と誤検知されるのでignoreが必要
+
+#### CI前の検証
+
+- ローカルで全チェックがパスするまでpushしない
+- CIと同じコマンドをローカルで実行して確認
+
 ### テスト
 
 - `tests/conftest.py`でDB fixtureを提供
 - 新機能にはテストを追加すること
 - テスト実行：`uv run pytest`
 
+### セキュリティモデル
+
+#### HTML Content
+
+- **意図的に非サニタイズ**: `html_content`はユーザー提供のHTML/JSをそのまま保存
+- **設計上の決定**: HTMLツールをホストするアプリのため、スクリプトの実行を許可
+- **iframe分離**: ツールは`iframe`内で表示され、親ページとは分離
+- **信頼モデル**: このアプリは信頼できるコンテンツ（自作ツール等）のホスティングを想定
+
+#### 入力バリデーション
+
+- `name`, `description`, `tags`: 制御文字・長さ制限によるバリデーションあり
+- `html_content`: バリデーションなし（任意のHTML/JSを許可）
+
 ### 禁止事項
 
-- セキュリティ：パストラバーサル、XSS脆弱性の導入禁止
+- セキュリティ：パストラバーサル脆弱性の導入禁止
 - 本番DBファイル（`sql_app.db`）の直接操作禁止
 - `.env`ファイルや認証情報のコミット禁止
 

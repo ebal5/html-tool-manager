@@ -4,6 +4,7 @@ from enum import Enum
 from typing import Dict, List, Optional
 
 from sqlalchemy import Column, Float, Integer, MetaData, String, Table, cast
+from sqlalchemy.sql.elements import ColumnElement
 from sqlmodel import Session, select, text
 
 from html_tool_manager.models import Tool, ToolCreate
@@ -67,8 +68,8 @@ class ToolRepository:
 
     def get_all_tools(self, offset: int = 0, limit: int = 100) -> List[Tool]:
         """Get all tools with pagination."""
-        statement = select(Tool).order_by(Tool.updated_at.desc()).offset(offset).limit(limit)
-        return self.session.exec(statement).all()
+        statement = select(Tool).order_by(Tool.updated_at.desc()).offset(offset).limit(limit)  # type: ignore[attr-defined]
+        return list(self.session.exec(statement).all())
 
     def search_tools(
         self,
@@ -100,8 +101,9 @@ class ToolRepository:
 
         if fts_query_parts:
             fts_match_query = " ".join(fts_query_parts)
+            join_condition: ColumnElement[bool] = Tool.id == tool_fts_table.c.rowid  # type: ignore[assignment]
             statement = (
-                statement.join(tool_fts_table, Tool.id == tool_fts_table.c.rowid)
+                statement.join(tool_fts_table, join_condition)
                 .where(text(f"{tool_fts_table.name} MATCH :fts_query"))
                 .params(fts_query=fts_match_query)
             )
@@ -116,20 +118,20 @@ class ToolRepository:
             # FTSのrankは小さいほど関連性が高いので ASC
             statement = statement.order_by(tool_fts_table.c.rank.asc())
         elif sort == SortOrder.NAME_ASC:
-            statement = statement.order_by(Tool.name.asc())
+            statement = statement.order_by(Tool.name.asc())  # type: ignore[attr-defined]
         elif sort == SortOrder.NAME_DESC:
-            statement = statement.order_by(Tool.name.desc())
+            statement = statement.order_by(Tool.name.desc())  # type: ignore[attr-defined]
         elif sort == SortOrder.UPDATED_ASC:
-            statement = statement.order_by(Tool.updated_at.asc())
+            statement = statement.order_by(Tool.updated_at.asc())  # type: ignore[attr-defined]
         elif sort == SortOrder.UPDATED_DESC:
-            statement = statement.order_by(Tool.updated_at.desc())
+            statement = statement.order_by(Tool.updated_at.desc())  # type: ignore[attr-defined]
         else:
-            statement = statement.order_by(Tool.updated_at.desc())  # デフォルトソート
+            statement = statement.order_by(Tool.updated_at.desc())  # type: ignore[attr-defined]
 
         statement = statement.offset(offset).limit(limit)
 
         results = self.session.exec(statement).all()
-        return results
+        return list(results)
 
     def update_tool(self, tool_id: int, tool_update: Tool) -> Optional[Tool]:
         """Update existing tool information."""

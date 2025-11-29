@@ -9,13 +9,13 @@
         </header>
 
         <form id="edit-tool-form">
-            <label for="name">Tool Name</label>
-            <input type="text" id="name" name="name" placeholder="My Awesome Tool" required>
-            
-            <label for="description">Description</label>
-            <textarea id="description" name="description" placeholder="A short description of what this tool does."></textarea>
-            
-            <label for="tags">Tags</label>
+            <label for="name">Tool Name <small>(1-100文字)</small></label>
+            <input type="text" id="name" name="name" placeholder="My Awesome Tool" required maxlength="100">
+
+            <label for="description">Description <small>(最大1000文字)</small></label>
+            <textarea id="description" name="description" placeholder="A short description of what this tool does." maxlength="1000"></textarea>
+
+            <label for="tags">Tags <small>(最大20個、各1-50文字)</small></label>
             <input type="text" id="tags" name="tags" placeholder="calculator, text, utility">
             <small>Comma separated values.</small>
 
@@ -28,6 +28,7 @@
         <p id="message" style="margin-top: 1rem;"></p>
     </article>
 
+    <script src="/static/js/validation.js"></script>
     <script>
         const toolId = {{ tool_id }};
         const form = document.getElementById('edit-tool-form');
@@ -40,6 +41,11 @@
 
         let originalFilepath = '';
         let isPastedContent = false;
+
+        // リアルタイムバリデーションの設定
+        setupRealtimeValidation(nameInput, validateName);
+        setupRealtimeValidation(descriptionInput, validateDescription);
+        setupRealtimeValidation(tagsInput, validateTags);
 
         async function loadToolData() {
             try {
@@ -91,18 +97,34 @@
 
         form.addEventListener('submit', async function(event) {
             event.preventDefault();
+
+            // フォームデータの収集
+            const formData = {
+                name: nameInput.value,
+                description: descriptionInput.value,
+                tags: tagsInput.value,
+                html_content: isPastedContent ? document.getElementById('html_content').value : null
+            };
+
+            // クライアント側バリデーション
+            const validation = validateToolForm(formData);
+            if (!validation.valid) {
+                showValidationErrors(messageDiv, validation.errors);
+                return;
+            }
+
             submitBtn.setAttribute('aria-busy', 'true');
 
             const updatedData = {
-                name: nameInput.value,
-                description: descriptionInput.value,
-                tags: tagsInput.value.split(',').map(tag => tag.trim()).filter(tag => tag !== ''),
-                filepath: originalFilepath // Always send the original filepath
+                name: validation.data.name,
+                description: validation.data.description,
+                tags: validation.data.tags,
+                filepath: originalFilepath
             };
 
             // If it was a pasted tool, include the updated HTML content
             if (isPastedContent) {
-                updatedData.html_content = document.getElementById('html_content').value;
+                updatedData.html_content = validation.data.html_content;
             }
 
             const response = await fetch(`/api/tools/${toolId}`, {
