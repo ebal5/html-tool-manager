@@ -172,22 +172,28 @@ argument-hint: [version: patch|minor|major|x.y.z]
 3. **タグメッセージを作成**
    - 変更履歴を整形してタグメッセージにする
 
-4. **タグを作成**
+4. **タグの存在確認**
+   ```bash
+   git tag -l "v<version>"
+   ```
+   - 同名のタグが既に存在する場合はエラーにして中断
+
+5. **タグを作成**
    ```bash
    git tag -a v<version> -m "<message>"
    ```
 
-5. **プッシュの確認**
+6. **プッシュの確認**
    - 作成されたタグを表示
    - **重要**: `git push origin main v<version>` を実行するか明示的に確認を取る
    - ユーザーの承認なしにプッシュしない
 
-6. **プッシュ実行**（承認後のみ）
+7. **プッシュ実行**（承認後のみ）
    ```bash
    git push origin main v<version>
    ```
 
-7. **完了報告**
+8. **完了報告**
    - 作成されたタグ名
    - 次のアクション（GitHub Releasesでのリリースノート作成など）
 
