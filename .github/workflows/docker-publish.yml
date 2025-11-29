@@ -2,8 +2,10 @@ name: Build and Publish Docker Image
 
 on:
   push:
-    tags:
-      - "v*.*.*"
+    branches:
+      - main
+    paths:
+      - "pyproject.toml"
   workflow_dispatch:
     inputs:
       tag:
@@ -16,7 +18,57 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+  create-tag:
+    if: |
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      contains(github.event.head_commit.message, 'chore: bump version')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag_created: ${{ steps.create_tag.outputs.created }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version from pyproject.toml
+        id: version
+        run: |
+          VERSION=$(grep -Po '(?<=version = ")[^"]+' pyproject.toml)
+          echo "version=v$VERSION" >> $GITHUB_OUTPUT
+          echo "Extracted version: v$VERSION"
+
+      - name: Check if tag exists
+        id: check_tag
+        run: |
+          if git ls-remote --tags origin | grep -q "refs/tags/${{ steps.version.outputs.version }}"; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Tag ${{ steps.version.outputs.version }} already exists"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Tag ${{ steps.version.outputs.version }} does not exist"
+          fi
+
+      - name: Create and push tag
+        id: create_tag
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.version.outputs.version }}" -m "Release ${{ steps.version.outputs.version }}"
+          git push origin "${{ steps.version.outputs.version }}"
+          echo "created=true" >> $GITHUB_OUTPUT
+          echo "Created and pushed tag ${{ steps.version.outputs.version }}"
+
   build-and-push:
+    needs: create-tag
+    if: |
+      always() &&
+      (needs.create-tag.outputs.tag_created == 'true' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -37,17 +89,37 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Get version
+        id: get_version
+        run: |
+          if [ -n "${{ needs.create-tag.outputs.version }}" ]; then
+            # From create-tag job (e.g., v0.1.2)
+            VERSION="${{ needs.create-tag.outputs.version }}"
+          elif [ -n "${{ inputs.tag }}" ]; then
+            # From workflow_dispatch
+            VERSION="${{ inputs.tag }}"
+          else
+            # Fallback to sha
+            VERSION="sha-${GITHUB_SHA::7}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          # Strip 'v' prefix for semver tags
+          SEMVER="${VERSION#v}"
+          echo "semver=$SEMVER" >> $GITHUB_OUTPUT
+          # Extract major.minor
+          MAJOR_MINOR=$(echo "$SEMVER" | grep -oP '^\d+\.\d+' || echo "")
+          echo "major_minor=$MAJOR_MINOR" >> $GITHUB_OUTPUT
+
       - name: Extract metadata (tags, labels)
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=raw,value=${{ inputs.tag }},enable=${{ inputs.tag != '' }}
+            type=raw,value=${{ steps.get_version.outputs.semver }},enable=${{ steps.get_version.outputs.semver != '' }}
+            type=raw,value=${{ steps.get_version.outputs.major_minor }},enable=${{ steps.get_version.outputs.major_minor != '' }}
             type=sha,prefix=sha-
-            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-') }}
+            type=raw,value=latest,enable=${{ startsWith(steps.get_version.outputs.version, 'v') && !contains(steps.get_version.outputs.version, '-') }}
 
       - name: Build Docker image for scanning
         uses: docker/build-push-action@v6
@@ -88,12 +160,13 @@ jobs:
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
+        if: needs.create-tag.outputs.tag_created == 'true'
         with:
+          tag_name: ${{ needs.create-tag.outputs.version }}
           generate_release_notes: true
           body: |
             ## Docker Image
 
             ```bash
-            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.get_version.outputs.semver }}
             ```
