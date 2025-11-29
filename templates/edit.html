@@ -41,6 +41,7 @@
     </article>
 
     <script>
+        const TOOL_PATH_PREFIX = 'static/tools/';
         const toolId = {{ tool_id }};
         const form = document.getElementById('edit-tool-form');
         const nameInput = document.getElementById('name');
@@ -53,10 +54,17 @@
         let originalFilepath = '';
         let isPastedContent = false;
 
+        // エラーメッセージを安全に表示するヘルパー関数
+        function showError(errorText) {
+            messageDiv.innerHTML = '';
+            messageDiv.textContent = 'エラー: ' + errorText;
+            messageDiv.style.color = 'var(--pico-color-red-500)';
+        }
+
         async function loadToolData() {
             try {
-                const response = await fetch(`/api/tools/${toolId}`);
-                if (!response.ok) throw new Error('Tool not found');
+                const response = await fetch('/api/tools/' + toolId);
+                if (!response.ok) throw new Error('ツールが見つかりません');
                 const tool = await response.json();
 
                 nameInput.value = tool.name;
@@ -65,14 +73,15 @@
                 originalFilepath = tool.filepath;
 
                 // Check if the tool was created by pasting content
-                isPastedContent = originalFilepath.startsWith('static/tools/');
-                
+                isPastedContent = originalFilepath.startsWith(TOOL_PATH_PREFIX);
+
                 if (isPastedContent) {
                     // Fetch the HTML content and display a textarea safely
-                    sourceSection.innerHTML = '<p aria-busy="true">Loading content...</p>';
-                    const htmlResponse = await fetch(`/${originalFilepath}`);
+                    sourceSection.innerHTML = '<p aria-busy="true">コンテンツを読み込み中...</p>';
+                    const htmlResponse = await fetch('/' + originalFilepath);
+                    if (!htmlResponse.ok) throw new Error('HTMLコンテンツの読み込みに失敗しました');
                     const htmlContent = await htmlResponse.text();
-                    
+
                     sourceSection.innerHTML = ''; // Clear loading message
                     const label = document.createElement('label');
                     label.setAttribute('for', 'html_content');
@@ -102,8 +111,8 @@
                 }
 
             } catch (error) {
-                messageDiv.textContent = `エラー: ツールデータの読み込みに失敗しました - ${error.message}`;
-                messageDiv.style.color = 'var(--pico-color-red-500)';
+                showError('ツールデータの読み込みに失敗しました');
+                console.error('Error loading tool data:', error);
                 form.style.display = 'none';
             }
         }
@@ -124,37 +133,42 @@
                 updatedData.html_content = document.getElementById('html_content').value;
             }
 
-            const response = await fetch(`/api/tools/${toolId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(updatedData)
-            });
+            try {
+                const response = await fetch('/api/tools/' + toolId, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updatedData)
+                });
 
-            if (response.ok) {
-                const updatedTool = await response.json();
-                // XSS対策: DOM APIで安全に構築
-                messageDiv.innerHTML = '';
-                messageDiv.appendChild(document.createTextNode('ツール「'));
-                const strong = document.createElement('strong');
-                strong.textContent = updatedTool.name;
-                messageDiv.appendChild(strong);
-                messageDiv.appendChild(document.createTextNode('」を更新しました。'));
-                const viewLink = document.createElement('a');
-                viewLink.href = `/tools/view/${toolId}`;
-                viewLink.textContent = '表示';
-                messageDiv.appendChild(viewLink);
-                messageDiv.appendChild(document.createTextNode(' | '));
-                const homeLink = document.createElement('a');
-                homeLink.href = '/';
-                homeLink.textContent = '一覧に戻る';
-                messageDiv.appendChild(homeLink);
-                messageDiv.style.color = 'var(--pico-color-green-500)';
-            } else {
-                const errorData = await response.json();
-                messageDiv.textContent = `エラー: ${errorData.detail || '不明なエラーが発生しました'}`;
-                messageDiv.style.color = 'var(--pico-color-red-500)';
+                if (response.ok) {
+                    const updatedTool = await response.json();
+                    // XSS対策: DOM APIで安全に構築
+                    messageDiv.innerHTML = '';
+                    messageDiv.appendChild(document.createTextNode('ツール「'));
+                    const strong = document.createElement('strong');
+                    strong.textContent = updatedTool.name;
+                    messageDiv.appendChild(strong);
+                    messageDiv.appendChild(document.createTextNode('」を更新しました。'));
+                    const viewLink = document.createElement('a');
+                    viewLink.href = '/tools/view/' + toolId;
+                    viewLink.textContent = '表示';
+                    messageDiv.appendChild(viewLink);
+                    messageDiv.appendChild(document.createTextNode(' | '));
+                    const homeLink = document.createElement('a');
+                    homeLink.href = '/';
+                    homeLink.textContent = '一覧に戻る';
+                    messageDiv.appendChild(homeLink);
+                    messageDiv.style.color = 'var(--pico-color-green-500)';
+                } else {
+                    const errorData = await response.json();
+                    showError(errorData.detail || '不明なエラーが発生しました');
+                }
+            } catch (error) {
+                showError('ネットワークエラーが発生しました');
+                console.error('Error updating tool:', error);
+            } finally {
+                submitBtn.removeAttribute('aria-busy');
             }
-            submitBtn.removeAttribute('aria-busy');
         });
 
         loadToolData();

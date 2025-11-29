@@ -28,16 +28,24 @@
     </article>
 
     <script>
+        // エラーメッセージを安全に表示するヘルパー関数
+        function showError(messageDiv, errorText) {
+            messageDiv.innerHTML = '';
+            messageDiv.textContent = 'エラー: ' + errorText;
+            messageDiv.style.color = 'var(--pico-color-red-500)';
+        }
+
         // Form submission logic
         document.getElementById('create-tool-form').addEventListener('submit', async function(event) {
             event.preventDefault();
             const submitBtn = document.getElementById('submit-btn');
+            const messageDiv = document.getElementById('message');
             submitBtn.setAttribute('aria-busy', 'true');
 
             const name = document.getElementById('name').value;
             const description = document.getElementById('description').value;
             const tags = document.getElementById('tags').value.split(',').map(tag => tag.trim()).filter(tag => tag !== '');
-            
+
             const toolData = {
                 name: name,
                 description: description,
@@ -45,41 +53,45 @@
                 html_content: document.getElementById('html_content').value
             };
 
-            const response = await fetch('/api/tools/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(toolData)
-            });
+            try {
+                const response = await fetch('/api/tools/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(toolData)
+                });
 
-            const messageDiv = document.getElementById('message');
-            if (response.ok) {
-                const newTool = await response.json();
-                // XSS対策: DOM APIで安全に構築
-                messageDiv.innerHTML = '';
-                messageDiv.appendChild(document.createTextNode('ツール「'));
-                const strong = document.createElement('strong');
-                strong.textContent = newTool.name;
-                messageDiv.appendChild(strong);
-                messageDiv.appendChild(document.createTextNode('」を作成しました。'));
-                const viewLink = document.createElement('a');
-                viewLink.href = `/tools/view/${newTool.id}`;
-                viewLink.textContent = '表示';
-                messageDiv.appendChild(viewLink);
-                messageDiv.appendChild(document.createTextNode(' | '));
-                const homeLink = document.createElement('a');
-                homeLink.href = '/';
-                homeLink.textContent = '一覧に戻る';
-                messageDiv.appendChild(homeLink);
-                messageDiv.style.color = 'var(--pico-color-green-500)';
-                document.getElementById('create-tool-form').reset();
-            } else {
-                const errorData = await response.json();
-                messageDiv.textContent = `エラー: ${errorData.detail || '不明なエラーが発生しました'}`;
-                messageDiv.style.color = 'var(--pico-color-red-500)';
+                if (response.ok) {
+                    const newTool = await response.json();
+                    // XSS対策: DOM APIで安全に構築
+                    messageDiv.innerHTML = '';
+                    messageDiv.appendChild(document.createTextNode('ツール「'));
+                    const strong = document.createElement('strong');
+                    strong.textContent = newTool.name;
+                    messageDiv.appendChild(strong);
+                    messageDiv.appendChild(document.createTextNode('」を作成しました。'));
+                    const viewLink = document.createElement('a');
+                    viewLink.href = '/tools/view/' + newTool.id;
+                    viewLink.textContent = '表示';
+                    messageDiv.appendChild(viewLink);
+                    messageDiv.appendChild(document.createTextNode(' | '));
+                    const homeLink = document.createElement('a');
+                    homeLink.href = '/';
+                    homeLink.textContent = '一覧に戻る';
+                    messageDiv.appendChild(homeLink);
+                    messageDiv.style.color = 'var(--pico-color-green-500)';
+                    document.getElementById('create-tool-form').reset();
+                } else {
+                    const errorData = await response.json();
+                    showError(messageDiv, errorData.detail || '不明なエラーが発生しました');
+                }
+            } catch (error) {
+                showError(messageDiv, 'ネットワークエラーが発生しました');
+                console.error('Error creating tool:', error);
+            } finally {
+                submitBtn.removeAttribute('aria-busy');
             }
-            submitBtn.removeAttribute('aria-busy');
         });
     </script>
 {% endblock %}
