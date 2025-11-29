@@ -56,7 +56,22 @@
             const messageDiv = document.getElementById('message');
             if (response.ok) {
                 const newTool = await response.json();
-                messageDiv.innerHTML = `ツール「<strong>${newTool.name}</strong>」を作成しました。<a href="/tools/view/${newTool.id}">表示</a> | <a href="/">一覧に戻る</a>`;
+                // XSS対策: DOM APIで安全に構築
+                messageDiv.innerHTML = '';
+                messageDiv.appendChild(document.createTextNode('ツール「'));
+                const strong = document.createElement('strong');
+                strong.textContent = newTool.name;
+                messageDiv.appendChild(strong);
+                messageDiv.appendChild(document.createTextNode('」を作成しました。'));
+                const viewLink = document.createElement('a');
+                viewLink.href = `/tools/view/${newTool.id}`;
+                viewLink.textContent = '表示';
+                messageDiv.appendChild(viewLink);
+                messageDiv.appendChild(document.createTextNode(' | '));
+                const homeLink = document.createElement('a');
+                homeLink.href = '/';
+                homeLink.textContent = '一覧に戻る';
+                messageDiv.appendChild(homeLink);
                 messageDiv.style.color = 'var(--pico-color-green-500)';
                 document.getElementById('create-tool-form').reset();
             } else {

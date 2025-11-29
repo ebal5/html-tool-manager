@@ -87,11 +87,18 @@
                     sourceSection.appendChild(label);
                     sourceSection.appendChild(textarea);
                 } else {
-                    // Display a read-only filepath
-                    sourceSection.innerHTML = `
-                        <label>ファイルパス</label>
-                        <input type="text" id="filepath" name="filepath" value="${originalFilepath}" readonly>
-                    `;
+                    // Display a read-only filepath (XSS対策: DOM APIで構築)
+                    sourceSection.innerHTML = '';
+                    const label = document.createElement('label');
+                    label.textContent = 'ファイルパス';
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.id = 'filepath';
+                    input.name = 'filepath';
+                    input.value = originalFilepath;
+                    input.readOnly = true;
+                    sourceSection.appendChild(label);
+                    sourceSection.appendChild(input);
                 }
 
             } catch (error) {
@@ -125,7 +132,22 @@
 
             if (response.ok) {
                 const updatedTool = await response.json();
-                messageDiv.innerHTML = `ツール「<strong>${updatedTool.name}</strong>」を更新しました。<a href="/tools/view/${toolId}">表示</a> | <a href="/">一覧に戻る</a>`;
+                // XSS対策: DOM APIで安全に構築
+                messageDiv.innerHTML = '';
+                messageDiv.appendChild(document.createTextNode('ツール「'));
+                const strong = document.createElement('strong');
+                strong.textContent = updatedTool.name;
+                messageDiv.appendChild(strong);
+                messageDiv.appendChild(document.createTextNode('」を更新しました。'));
+                const viewLink = document.createElement('a');
+                viewLink.href = `/tools/view/${toolId}`;
+                viewLink.textContent = '表示';
+                messageDiv.appendChild(viewLink);
+                messageDiv.appendChild(document.createTextNode(' | '));
+                const homeLink = document.createElement('a');
+                homeLink.href = '/';
+                homeLink.textContent = '一覧に戻る';
+                messageDiv.appendChild(homeLink);
                 messageDiv.style.color = 'var(--pico-color-green-500)';
             } else {
                 const errorData = await response.json();
