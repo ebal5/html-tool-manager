@@ -88,20 +88,24 @@ argument-hint: [version: patch|minor|major|x.y.z]
 5. **ヘルスチェック**（リトライ付き）
    - 最大30秒間、5秒間隔でヘルスチェックを実行:
      ```bash
+     HEALTH_STATUS="unhealthy"
      for i in 1 2 3 4 5 6; do
        sleep 5
-       STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8888/)
-       if [ "$STATUS" = "200" ]; then echo "healthy"; break; fi
-       if [ $i -eq 6 ]; then echo "unhealthy"; fi
+       if curl -s -f http://localhost:8888/ > /dev/null 2>&1; then
+         HEALTH_STATUS="healthy"
+         break
+       fi
      done
+     echo "$HEALTH_STATUS"
      ```
    - `healthy` が返れば成功
    - `unhealthy` の場合: `docker logs htm-release-test` でログを確認して報告
 
 6. **クリーンアップ**（成功・失敗に関わらず必ず実行）
    ```bash
-   docker stop htm-release-test && docker rm htm-release-test
-   docker rmi html-tool-manager:release-test
+   docker stop htm-release-test || true
+   docker rm htm-release-test || true
+   docker rmi html-tool-manager:release-test || true
    ```
 
 ## Phase 4: バージョン決定
