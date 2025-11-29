@@ -16,7 +16,7 @@ router = APIRouter(prefix="/tools", tags=["tools"])
 
 @router.post("/", response_model=ToolRead, status_code=status.HTTP_201_CREATED)
 def create_tool(tool_data: ToolCreate, session: Session = Depends(get_session)) -> ToolRead:
-    """新しいツールを作成します。"""
+    """Create a new tool."""
     repo = ToolRepository(session)
     try:
         created_tool = repo.create_tool_with_content(tool_data)
@@ -33,7 +33,7 @@ def read_tools(
     offset: int = 0,
     limit: int = 100,
 ) -> List[ToolRead]:
-    """ツールの一覧を取得、または検索します。"""
+    """Get a list of tools, or search for tools."""
     repo = ToolRepository(session)
     if q:
         parsed_query = parse_query(q)
@@ -47,7 +47,7 @@ def read_tools(
 
 @router.get("/{tool_id}", response_model=ToolRead)
 def read_tool(tool_id: int, session: Session = Depends(get_session)) -> ToolRead:
-    """IDを指定して単一のツールを取得します。"""
+    """Get a single tool by ID."""
     repo = ToolRepository(session)
     db_tool = repo.get_tool(tool_id)
     if not db_tool:
@@ -59,7 +59,7 @@ def read_tool(tool_id: int, session: Session = Depends(get_session)) -> ToolRead
 
 @router.put("/{tool_id}", response_model=ToolRead)
 def update_tool(tool_id: int, tool_data: ToolCreate, session: Session = Depends(get_session)) -> ToolRead:
-    """既存のツールを更新します。"""
+    """Update an existing tool."""
     repo = ToolRepository(session)
     tool_to_update = repo.get_tool(tool_id)
     if not tool_to_update:
@@ -82,7 +82,7 @@ def update_tool(tool_id: int, tool_data: ToolCreate, session: Session = Depends(
 
 @router.delete("/{tool_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_tool(tool_id: int, session: Session = Depends(get_session)) -> None:
-    """ツールを削除します。"""
+    """Delete a tool."""
     repo = ToolRepository(session)
     tool = repo.delete_tool(tool_id)
     if not tool:
@@ -92,14 +92,14 @@ def delete_tool(tool_id: int, session: Session = Depends(get_session)) -> None:
 
 
 class ToolExportRequest(BaseModel):
-    """エクスポートするツールのIDリストを受け取るリクエストモデル。"""
+    """Request model for exporting tools."""
 
     tool_ids: List[int]
 
 
 @router.post("/export", response_class=Response)
 def export_tools(export_request: ToolExportRequest, session: Session = Depends(get_session)) -> Response:
-    """選択されたツールをMessagePack形式でエクスポートします。"""
+    """Export selected tools in MessagePack format."""
     repo = ToolRepository(session)
     tools_to_export = []
     for tool_id in export_request.tool_ids:
@@ -136,7 +136,7 @@ def export_tools(export_request: ToolExportRequest, session: Session = Depends(g
 
 @router.post("/import")
 async def import_tools(file: UploadFile = File(...), session: Session = Depends(get_session)) -> Dict[str, int]:
-    """MessagePackファイルからツールをインポートします。"""
+    """Import tools from a MessagePack file."""
     if file.content_type != "application/octet-stream":
         raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail="Unsupported file type.")
 

@@ -6,14 +6,14 @@ QUERY_REGEX = re.compile(r'(\w+):"([^"]+)"|(\w+):(\S+)|"([^"]+)"|(\S+)')
 
 
 def parse_query(query_str: str) -> Dict[str, List[str]]:
-    """検索クエリ文字列を構造化された辞書にパースします。
+    """Parse a search query string into a structured dictionary.
 
     Args:
-        query_str: 生の検索クエリ文字列。
+        query_str: The raw search query string.
 
     Returns:
-        'name', 'desc', 'tag', 'term' などのキーを持つ辞書。
-        各キーにはパースされた値のリストが含まれます。
+        A dictionary with keys like 'name', 'desc', 'tag', 'term'.
+        Each key contains a list of parsed values.
 
     """
     parsed: Dict[str, List[str]] = {

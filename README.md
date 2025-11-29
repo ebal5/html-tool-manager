@@ -123,3 +123,13 @@ docker run -d -p 8888:80 \
 **ボリューム説明:**
 - `html-tool-manager-db`: データベースファイル (`sql_app.db`) の永続化
 - `html-tool-manager-data`: アップロードされたツールの永続化
+
+## セキュリティ
+
+このプロジェクトでは、複数のレイヤーでセキュリティスキャンを実施しています：
+
+- **Pythonコード**: bandit によるコード脆弱性スキャン
+- **Python依存関係**: pip-audit による既知の脆弱性チェック
+- **Dockerイメージ**: Trivy によるOSパッケージとアプリケーション依存関係のスキャン
+
+詳細は [セキュリティスキャンドキュメント](docs/security-scanning.md) を参照してください。

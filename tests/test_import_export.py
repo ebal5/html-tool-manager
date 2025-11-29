@@ -4,7 +4,7 @@ from sqlmodel import Session
 
 
 def test_export_selected_tools(session: Session, client: TestClient):
-    """選択されたツールのみが正しくエクスポートされることをテストする。"""
+    """Test that only selected tools are exported correctly."""
     # 1. テストデータを作成 (API経由で)
     tool1_data = {"name": "Tool 1", "description": "Desc 1", "html_content": "<p>1</p>"}
     tool2_data = {"name": "Tool 2", "description": "Desc 2", "html_content": "<p>2</p>"}
@@ -45,7 +45,7 @@ def test_export_selected_tools(session: Session, client: TestClient):
 
 
 def test_import_tools(session: Session, client: TestClient):
-    """エクスポートされたファイルをインポートできることをテストする。"""
+    """Test that tools can be imported from an exported file."""
     # 1. インポートするデータを作成 (MessagePack形式)
     tools_to_import = [
         {"name": "Imported Tool A", "description": "Import A", "tags": ["a"], "html_content": "<h1>A</h1>"},
