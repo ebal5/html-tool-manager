@@ -3,33 +3,46 @@
 {% block title %}Edit Tool - HTML Tool Manager{% endblock %}
 
 {% block content %}
+    <style>
+        .edit-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .edit-header h2 {
+            margin-bottom: 0;
+        }
+    </style>
+
     <article>
-        <header>
-            <h2>Edit Tool (ID: {{ tool_id }})</h2>
+        <header class="edit-header">
+            <h2>ツール編集 (ID: {{ tool_id }})</h2>
+            <a href="/tools/view/{{ tool_id }}" role="button" class="secondary outline">表示</a>
         </header>
 
         <form id="edit-tool-form">
-            <label for="name">Tool Name <small>(1-100文字)</small></label>
-            <input type="text" id="name" name="name" placeholder="My Awesome Tool" required maxlength="100">
+            <label for="name">ツール名 <small>(1-100文字)</small></label>
+            <input type="text" id="name" name="name" placeholder="すごいツール" required maxlength="100">
 
-            <label for="description">Description <small>(最大1000文字)</small></label>
-            <textarea id="description" name="description" placeholder="A short description of what this tool does." maxlength="1000"></textarea>
+            <label for="description">説明 <small>(最大1000文字)</small></label>
+            <textarea id="description" name="description" placeholder="このツールの説明" maxlength="1000"></textarea>
 
-            <label for="tags">Tags <small>(最大20個、各1-50文字)</small></label>
-            <input type="text" id="tags" name="tags" placeholder="calculator, text, utility">
-            <small>Comma separated values.</small>
+            <label for="tags">タグ <small>(最大20個、各1-50文字)</small></label>
+            <input type="text" id="tags" name="tags" placeholder="計算, テキスト, ユーティリティ">
+            <small>カンマ区切りで入力</small>
 
             <div id="source-section">
                 <!-- Content will be loaded here by JavaScript -->
             </div>
-            
-            <button type="submit" id="submit-btn">Update Tool</button>
+
+            <button type="submit" id="submit-btn">更新</button>
         </form>
         <p id="message" style="margin-top: 1rem;"></p>
     </article>
 
     <script src="/static/js/validation.js"></script>
     <script>
+        const TOOL_PATH_PREFIX = 'static/tools/';
         const toolId = {{ tool_id }};
         const form = document.getElementById('edit-tool-form');
         const nameInput = document.getElementById('name');
@@ -42,6 +55,13 @@
         let originalFilepath = '';
         let isPastedContent = false;
 
+        // エラーメッセージを安全に表示するヘルパー関数
+        function showError(errorText) {
+            messageDiv.innerHTML = '';
+            messageDiv.textContent = 'エラー: ' + errorText;
+            messageDiv.style.color = 'var(--pico-color-red-500)';
+        }
+
         // リアルタイムバリデーションの設定
         setupRealtimeValidation(nameInput, validateName);
         setupRealtimeValidation(descriptionInput, validateDescription);
@@ -49,8 +69,8 @@
 
         async function loadToolData() {
             try {
-                const response = await fetch(`/api/tools/${toolId}`);
-                if (!response.ok) throw new Error('Tool not found');
+                const response = await fetch('/api/tools/' + toolId);
+                if (!response.ok) throw new Error('ツールが見つかりません');
                 const tool = await response.json();
 
                 nameInput.value = tool.name;
@@ -59,18 +79,19 @@
                 originalFilepath = tool.filepath;
 
                 // Check if the tool was created by pasting content
-                isPastedContent = originalFilepath.startsWith('static/tools/');
-                
+                isPastedContent = originalFilepath.startsWith(TOOL_PATH_PREFIX);
+
                 if (isPastedContent) {
                     // Fetch the HTML content and display a textarea safely
-                    sourceSection.innerHTML = '<p aria-busy="true">Loading content...</p>';
-                    const htmlResponse = await fetch(`/${originalFilepath}`);
+                    sourceSection.innerHTML = '<p aria-busy="true">コンテンツを読み込み中...</p>';
+                    const htmlResponse = await fetch('/' + originalFilepath);
+                    if (!htmlResponse.ok) throw new Error('HTMLコンテンツの読み込みに失敗しました');
                     const htmlContent = await htmlResponse.text();
-                    
+
                     sourceSection.innerHTML = ''; // Clear loading message
                     const label = document.createElement('label');
                     label.setAttribute('for', 'html_content');
-                    label.textContent = 'HTML Content';
+                    label.textContent = 'HTMLコンテンツ';
 
                     const textarea = document.createElement('textarea');
                     textarea.id = 'html_content';
@@ -81,16 +102,23 @@
                     sourceSection.appendChild(label);
                     sourceSection.appendChild(textarea);
                 } else {
-                    // Display a read-only filepath
-                    sourceSection.innerHTML = `
-                        <label>File Path</label>
-                        <input type="text" id="filepath" name="filepath" value="${originalFilepath}" readonly>
-                    `;
+                    // Display a read-only filepath (XSS対策: DOM APIで構築)
+                    sourceSection.innerHTML = '';
+                    const label = document.createElement('label');
+                    label.textContent = 'ファイルパス';
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.id = 'filepath';
+                    input.name = 'filepath';
+                    input.value = originalFilepath;
+                    input.readOnly = true;
+                    sourceSection.appendChild(label);
+                    sourceSection.appendChild(input);
                 }
 
             } catch (error) {
-                messageDiv.textContent = `❌ Error loading tool data: ${error.message}`;
-                messageDiv.style.color = 'var(--pico-color-red-500)';
+                showError('ツールデータの読み込みに失敗しました');
+                console.error('Error loading tool data:', error);
                 form.style.display = 'none';
             }
         }
@@ -127,22 +155,42 @@
                 updatedData.html_content = validation.data.html_content;
             }
 
-            const response = await fetch(`/api/tools/${toolId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(updatedData)
-            });
+            try {
+                const response = await fetch('/api/tools/' + toolId, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updatedData)
+                });
 
-            if (response.ok) {
-                const updatedTool = await response.json();
-                messageDiv.innerHTML = `✅ Tool '<strong>${updatedTool.name}</strong>' updated successfully. <a href="/">Go back to list</a>.`;
-                messageDiv.style.color = 'var(--pico-color-green-500)';
-            } else {
-                const errorData = await response.json();
-                messageDiv.textContent = `❌ Error: ${errorData.detail || 'An unknown error occurred.'}`;
-                messageDiv.style.color = 'var(--pico-color-red-500)';
+                if (response.ok) {
+                    const updatedTool = await response.json();
+                    // XSS対策: DOM APIで安全に構築
+                    messageDiv.innerHTML = '';
+                    messageDiv.appendChild(document.createTextNode('ツール「'));
+                    const strong = document.createElement('strong');
+                    strong.textContent = updatedTool.name;
+                    messageDiv.appendChild(strong);
+                    messageDiv.appendChild(document.createTextNode('」を更新しました。'));
+                    const viewLink = document.createElement('a');
+                    viewLink.href = '/tools/view/' + toolId;
+                    viewLink.textContent = '表示';
+                    messageDiv.appendChild(viewLink);
+                    messageDiv.appendChild(document.createTextNode(' | '));
+                    const homeLink = document.createElement('a');
+                    homeLink.href = '/';
+                    homeLink.textContent = '一覧に戻る';
+                    messageDiv.appendChild(homeLink);
+                    messageDiv.style.color = 'var(--pico-color-green-500)';
+                } else {
+                    const errorData = await response.json();
+                    showError(errorData.detail || '不明なエラーが発生しました');
+                }
+            } catch (error) {
+                showError('ネットワークエラーが発生しました');
+                console.error('Error updating tool:', error);
+            } finally {
+                submitBtn.removeAttribute('aria-busy');
             }
-            submitBtn.removeAttribute('aria-busy');
         });
 
         loadToolData();

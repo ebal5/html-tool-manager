@@ -5,30 +5,37 @@
 {% block content %}
     <article>
         <header>
-            <h2>Create New Tool</h2>
+            <h2>新規ツール作成</h2>
         </header>
 
         <form id="create-tool-form">
-            <label for="name">Tool Name <small>(1-100文字)</small></label>
-            <input type="text" id="name" name="name" placeholder="My Awesome Tool" required maxlength="100">
+            <label for="name">ツール名 <small>(1-100文字)</small></label>
+            <input type="text" id="name" name="name" placeholder="すごいツール" required maxlength="100">
 
-            <label for="description">Description <small>(最大1000文字)</small></label>
-            <textarea id="description" name="description" placeholder="A short description of what this tool does." maxlength="1000"></textarea>
+            <label for="description">説明 <small>(最大1000文字)</small></label>
+            <textarea id="description" name="description" placeholder="このツールの説明" maxlength="1000"></textarea>
 
-            <label for="tags">Tags <small>(最大20個、各1-50文字)</small></label>
-            <input type="text" id="tags" name="tags" placeholder="calculator, text, utility">
-            <small>Comma separated values.</small>
+            <label for="tags">タグ <small>(最大20個、各1-50文字)</small></label>
+            <input type="text" id="tags" name="tags" placeholder="計算, テキスト, ユーティリティ">
+            <small>カンマ区切りで入力</small>
 
-            <label for="html_content">HTML Content</label>
+            <label for="html_content">HTMLコンテンツ</label>
             <textarea id="html_content" name="html_content" rows="10" placeholder="<!DOCTYPE html>..." required></textarea>
 
-            <button type="submit" id="submit-btn">Create Tool</button>
+            <button type="submit" id="submit-btn">作成</button>
         </form>
         <p id="message" style="margin-top: 1rem;"></p>
     </article>
 
     <script src="/static/js/validation.js"></script>
     <script>
+        // エラーメッセージを安全に表示するヘルパー関数
+        function showError(messageDiv, errorText) {
+            messageDiv.innerHTML = '';
+            messageDiv.textContent = 'エラー: ' + errorText;
+            messageDiv.style.color = 'var(--pico-color-red-500)';
+        }
+
         // リアルタイムバリデーションの設定
         setupRealtimeValidation(document.getElementById('name'), validateName);
         setupRealtimeValidation(document.getElementById('description'), validateDescription);
@@ -57,25 +64,45 @@
 
             submitBtn.setAttribute('aria-busy', 'true');
 
-            const response = await fetch('/api/tools/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(validation.data)
-            });
+            try {
+                const response = await fetch('/api/tools/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(validation.data)
+                });
 
-            if (response.ok) {
-                const newTool = await response.json();
-                messageDiv.innerHTML = `✅ Tool '<strong>${newTool.name}</strong>' created successfully. <a href="/tools/view/${newTool.id}">View it here</a>.`;
-                messageDiv.style.color = 'var(--pico-color-green-500)';
-                document.getElementById('create-tool-form').reset();
-            } else {
-                const errorData = await response.json();
-                messageDiv.textContent = `❌ Error: ${errorData.detail || 'An unknown error occurred.'}`;
-                messageDiv.style.color = 'var(--pico-color-red-500)';
+                if (response.ok) {
+                    const newTool = await response.json();
+                    // XSS対策: DOM APIで安全に構築
+                    messageDiv.innerHTML = '';
+                    messageDiv.appendChild(document.createTextNode('ツール「'));
+                    const strong = document.createElement('strong');
+                    strong.textContent = newTool.name;
+                    messageDiv.appendChild(strong);
+                    messageDiv.appendChild(document.createTextNode('」を作成しました。'));
+                    const viewLink = document.createElement('a');
+                    viewLink.href = '/tools/view/' + newTool.id;
+                    viewLink.textContent = '表示';
+                    messageDiv.appendChild(viewLink);
+                    messageDiv.appendChild(document.createTextNode(' | '));
+                    const homeLink = document.createElement('a');
+                    homeLink.href = '/';
+                    homeLink.textContent = '一覧に戻る';
+                    messageDiv.appendChild(homeLink);
+                    messageDiv.style.color = 'var(--pico-color-green-500)';
+                    document.getElementById('create-tool-form').reset();
+                } else {
+                    const errorData = await response.json();
+                    showError(messageDiv, errorData.detail || '不明なエラーが発生しました');
+                }
+            } catch (error) {
+                showError(messageDiv, 'ネットワークエラーが発生しました');
+                console.error('Error creating tool:', error);
+            } finally {
+                submitBtn.removeAttribute('aria-busy');
             }
-            submitBtn.removeAttribute('aria-busy');
         });
     </script>
 {% endblock %}

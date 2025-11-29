@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- ツール一覧の取得と表示 ---
   async function fetchTools() {
-    container.innerHTML = '<p aria-busy="true">Loading tools...</p>';
+    container.innerHTML = '<p aria-busy="true">ツールを読み込み中...</p>';
     const query = searchBox.value;
     const sort = sortSelect.value;
 
@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const tools = await response.json();
 
       if (tools.length === 0) {
-        container.innerHTML = '<p>No tools found.</p>';
+        container.innerHTML = '<p>ツールが見つかりませんでした。</p>';
         return;
       }
 
@@ -41,10 +41,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 <thead>
                     <tr>
                         <th class="checkbox-column hidden"><input type="checkbox" id="select-all-tools"></th>
-                        <th>Name</th>
-                        <th>Description</th>
-                        <th>Tags</th>
-                        <th>Actions</th>
+                        <th>名前</th>
+                        <th>説明</th>
+                        <th>タグ</th>
+                        <th>操作</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -89,12 +89,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const actionsCell = document.createElement('td');
         actionsCell.innerHTML = `<div class="action-grid">
-                    <a href="/tools/view/${tool.id}" role="button" class="secondary outline">Use</a>
+                    <a href="/tools/view/${tool.id}" role="button" class="secondary outline">使用</a>
                     <details class="dropdown">
                         <summary role="button" class="contrast outline">⋮</summary>
                         <ul style="position: absolute; z-index: 1;">
-                            <li><a href="/tools/edit/${tool.id}">Edit</a></li>
-                            <li><a href="#" onclick="event.preventDefault(); deleteTool(${tool.id}, this)">Delete</a></li>
+                            <li><a href="/tools/edit/${tool.id}">編集</a></li>
+                            <li><a href="#" onclick="event.preventDefault(); deleteTool(${tool.id}, this)">削除</a></li>
                         </ul>
                     </details>
                 </div>`;
@@ -121,7 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
     } catch (error) {
-      container.innerHTML = `<p style="color: var(--pico-color-red-500);">Failed to load tools. Please try again later.</p>`;
+      container.innerHTML = `<p style="color: var(--pico-color-red-500);">ツールの読み込みに失敗しました。</p>`;
       console.error('Error fetching tools:', error);
     }
   }
@@ -152,7 +152,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- ツール削除機能 ---
   window.deleteTool = (toolId, buttonElement) => {
-    if (confirm(`Are you sure you want to delete tool ID: ${toolId}?`)) {
+    if (confirm(`ツールID: ${toolId} を削除しますか？`)) {
       buttonElement.setAttribute('aria-busy', 'true');
       fetch(`/api/tools/${toolId}`, {
         method: 'DELETE',
@@ -163,13 +163,13 @@ document.addEventListener('DOMContentLoaded', () => {
             row.parentNode.removeChild(row);
             fetchTools(); // ツールリストをリロード
           } else {
-            alert('Failed to delete the tool.');
+            alert('ツールの削除に失敗しました。');
             buttonElement.removeAttribute('aria-busy');
           }
         })
         .catch((error) => {
           console.error('Error:', error);
-          alert('An error occurred while deleting the tool.');
+          alert('削除中にエラーが発生しました。');
           buttonElement.removeAttribute('aria-busy');
         });
     }

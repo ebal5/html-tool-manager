@@ -165,13 +165,19 @@ function validateToolForm(formData) {
 }
 
 /**
- * エラーメッセージを表示
+ * エラーメッセージを表示（XSS対策: DOM APIを使用）
  * @param {HTMLElement} messageDiv - メッセージ表示用要素
  * @param {string[]} errors - エラーメッセージの配列
  */
 // biome-ignore lint/correctness/noUnusedVariables: HTMLテンプレートから呼び出される関数
 function showValidationErrors(messageDiv, errors) {
-  messageDiv.innerHTML = `❌ ${errors.join('<br>❌ ')}`;
+  messageDiv.innerHTML = '';
+  errors.forEach((error, index) => {
+    messageDiv.appendChild(document.createTextNode(`❌ ${error}`));
+    if (index < errors.length - 1) {
+      messageDiv.appendChild(document.createElement('br'));
+    }
+  });
   messageDiv.style.color = 'var(--pico-color-red-500)';
 }
 

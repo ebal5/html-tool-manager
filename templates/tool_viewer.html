@@ -3,36 +3,76 @@
 {% block title %}View Tool - HTML Tool Manager{% endblock %}
 
 {% block content %}
-    <article>
-        <header>
-            <h2 id="tool-name">Loading...</h2>
+    <style>
+        /* ツール表示ページは幅を広げる */
+        .tool-viewer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+        .tool-viewer-header .tool-info {
+            flex: 1;
+        }
+        .tool-viewer-header .tool-actions {
+            flex-shrink: 0;
+            margin-left: 1rem;
+        }
+        #tool-content {
+            margin-left: -5%;
+            margin-right: -5%;
+            padding: 0 1rem;
+        }
+        #tool-content iframe {
+            width: 100%;
+            height: 80vh;
+            border: 1px solid var(--pico-muted-border-color);
+        }
+    </style>
+
+    <div class="tool-viewer-header">
+        <div class="tool-info">
+            <h2 id="tool-name">読み込み中...</h2>
             <p id="tool-description"></p>
             <div id="tool-tags"></div>
-        </header>
-
-        <div id="tool-content">
-            <p aria-busy="true">Loading tool content...</p>
         </div>
-    </article>
+        <div class="tool-actions">
+            <a href="/tools/edit/{{ tool_id }}" role="button" class="secondary outline">編集</a>
+        </div>
+    </div>
+
+    <div id="tool-content">
+        <p aria-busy="true">ツールを読み込み中...</p>
+    </div>
 
     <script>
+        const TOOL_PATH_PREFIX = 'static/tools/';
         const toolId = {{ tool_id }};
         const toolNameEl = document.getElementById('tool-name');
         const toolDescriptionEl = document.getElementById('tool-description');
         const toolTagsEl = document.getElementById('tool-tags');
         const toolContentEl = document.getElementById('tool-content');
 
+        // エラーメッセージを安全に表示するヘルパー関数
+        function showError(message) {
+            toolContentEl.innerHTML = '';
+            const p = document.createElement('p');
+            p.style.color = 'var(--pico-color-red-500)';
+            p.textContent = message;
+            toolContentEl.appendChild(p);
+        }
+
         async function fetchToolDetails() {
             try {
-                const response = await fetch(`/api/tools/${toolId}`);
+                const response = await fetch('/api/tools/' + toolId);
                 if (!response.ok) {
-                    throw new Error('Tool not found');
+                    throw new Error('ツールが見つかりません');
                 }
                 const tool = await response.json();
 
                 toolNameEl.textContent = tool.name;
                 toolDescriptionEl.textContent = tool.description || '';
-                
+
                 // Safely create and append tags
                 toolTagsEl.innerHTML = ''; // Clear previous tags
                 if (tool.tags && tool.tags.length > 0) {
@@ -47,14 +87,18 @@
                 }
 
                 // ここでツール本体をロードする
-                if (tool.filepath && tool.filepath.startsWith('static/tools/')) {
-                    toolContentEl.innerHTML = `<iframe src="/${tool.filepath}" style="width: 100%; height: 60vh; border: 1px solid var(--pico-muted-border-color);"></iframe>`;
+                if (tool.filepath && tool.filepath.startsWith(TOOL_PATH_PREFIX)) {
+                    toolContentEl.innerHTML = '';
+                    const iframe = document.createElement('iframe');
+                    iframe.src = '/' + tool.filepath;
+                    iframe.title = tool.name; // アクセシビリティ: スクリーンリーダー用
+                    toolContentEl.appendChild(iframe);
                 } else {
-                     toolContentEl.innerHTML = `<p>Cannot display this tool type. Invalid file path provided.</p>`;
+                    showError('このツールは表示できません。ファイルパスが無効です。');
                 }
 
             } catch (error) {
-                toolContentEl.innerHTML = `<p style="color: var(--pico-color-red-500);">Failed to load tool details.</p>`;
+                showError('ツールの読み込みに失敗しました。');
                 console.error('Error fetching tool details:', error);
             }
         }
