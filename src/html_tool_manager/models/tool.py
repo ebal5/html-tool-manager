@@ -5,7 +5,7 @@ from sqlmodel import JSON, Column, Field, SQLModel
 
 
 class ToolBase(SQLModel):
-    """ツールの基本情報を表すベースモデル。"""
+    """Base model representing basic tool information."""
 
     name: str = Field(index=True)
     description: Optional[str] = None
@@ -14,7 +14,7 @@ class ToolBase(SQLModel):
 
 
 class Tool(ToolBase, table=True):
-    """データベースに保存されるツールモデル。"""
+    """Tool model stored in the database."""
 
     id: Optional[int] = Field(default=None, primary_key=True)
     filepath: str  # DB上では必須
@@ -24,13 +24,13 @@ class Tool(ToolBase, table=True):
 
 # APIの入出力のためのPydanticモデル
 class ToolCreate(ToolBase):
-    """ツール作成時にAPIが受け取るデータモデル。"""
+    """Data model for API input when creating a tool."""
 
     html_content: Optional[str] = None  # HTMLコンテンツの直接貼り付け用
 
 
 class ToolRead(ToolBase):
-    """ツール情報をAPIが返す際のデータモデル。"""
+    """Data model for API output when returning tool information."""
 
     id: int
     filepath: str

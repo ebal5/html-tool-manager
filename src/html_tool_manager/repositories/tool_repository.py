@@ -10,7 +10,7 @@ from html_tool_manager.models import Tool, ToolCreate
 
 
 class SortOrder(str, Enum):
-    """検索結果のソート順を定義するEnum。"""
+    """Enum defining sort order for search results."""
 
     RELEVANCE = "relevance"
     NAME_ASC = "name_asc"
@@ -20,26 +20,26 @@ class SortOrder(str, Enum):
 
 
 class ToolRepository:
-    """ツールのデータベース操作をカプセル化するリポジトリクラス。"""
+    """Repository class encapsulating database operations for tools."""
 
     def __init__(self, session: Session):
-        """コンストラクタ。
+        """Initialize the repository.
 
         Args:
-            session: データベースセッション。
+            session: The database session.
 
         """
         self.session = session
 
     def create_tool(self, tool: Tool) -> Tool:
-        """新しいツールをデータベースに作成します。"""
+        """Create a new tool in the database."""
         self.session.add(tool)
         self.session.commit()
         self.session.refresh(tool)
         return tool
 
     def create_tool_with_content(self, tool_data: ToolCreate) -> Tool:
-        """HTMLコンテンツをファイルに保存し、ツールをDBに作成します。"""
+        """Save HTML content to a file and create the tool in the database."""
         if not tool_data.html_content:
             # この関数ではhtml_contentが必須であると仮定
             raise ValueError("'html_content' is required.")
@@ -62,11 +62,11 @@ class ToolRepository:
         return self.create_tool(tool_to_db)
 
     def get_tool(self, tool_id: int) -> Optional[Tool]:
-        """IDで単一のツールを取得します。"""
+        """Get a single tool by ID."""
         return self.session.get(Tool, tool_id)
 
     def get_all_tools(self, offset: int = 0, limit: int = 100) -> List[Tool]:
-        """すべてのツールをページネーション付きで取得します。"""
+        """Get all tools with pagination."""
         statement = select(Tool).order_by(Tool.updated_at.desc()).offset(offset).limit(limit)
         return self.session.exec(statement).all()
 
@@ -77,7 +77,7 @@ class ToolRepository:
         offset: int = 0,
         limit: int = 100,
     ) -> List[Tool]:
-        """指定されたクエリとソート順でツールを検索します。"""
+        """Search for tools with the specified query and sort order."""
         statement = select(Tool)  # ベースとなるクエリ
 
         # FTS検索条件の組み立て
@@ -132,7 +132,7 @@ class ToolRepository:
         return results
 
     def update_tool(self, tool_id: int, tool_update: Tool) -> Optional[Tool]:
-        """既存のツール情報を更新します。"""
+        """Update existing tool information."""
         tool = self.session.get(Tool, tool_id)
         if not tool:
             return None
@@ -147,7 +147,7 @@ class ToolRepository:
         return tool
 
     def delete_tool(self, tool_id: int) -> Optional[Tool]:
-        """ツールを削除します。"""
+        """Delete a tool."""
         tool = self.session.get(Tool, tool_id)
         if not tool:
             return None

@@ -3,6 +3,7 @@ from sqlmodel import Session
 
 
 def test_search_by_name_prefix(session: Session, client: TestClient):
+    """Test searching tools by name prefix."""
     # 1. Create test data via API
     tool1_data = {"name": "json formatter", "description": "Formats JSON.", "html_content": "<p>json</p>"}
     tool2_data = {"name": "jwt decoder", "description": "Decodes JWT.", "html_content": "<p>jwt</p>"}
@@ -15,10 +16,6 @@ def test_search_by_name_prefix(session: Session, client: TestClient):
     assert res1.status_code == 201
     assert res2.status_code == 201
     assert res3.status_code == 201
-
-    tool1_id = res1.json()["id"]
-    tool2_id = res2.json()["id"]
-    tool3_id = res3.json()["id"]
 
     # 2. Perform search
     response = client.get("/api/tools/?q=name:j")
@@ -35,6 +32,7 @@ def test_search_by_name_prefix(session: Session, client: TestClient):
 
 
 def test_search_by_tag(session: Session, client: TestClient):
+    """Test searching tools by tag."""
     # 1. Create test data via API
     tool1_data = {
         "name": "json formatter",
@@ -76,6 +74,7 @@ def test_search_by_tag(session: Session, client: TestClient):
 
 
 def test_search_with_phrase(session: Session, client: TestClient):
+    """Test searching tools with a phrase query."""
     # 1. Create test data via API
     tool1_data = {"name": "My Awesome Tool", "description": "Something awesome.", "html_content": "<p>awesome</p>"}
     tool2_data = {"name": "My Other Tool", "description": "Something else.", "html_content": "<p>else</p>"}

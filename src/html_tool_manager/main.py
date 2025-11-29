@@ -11,7 +11,7 @@ from html_tool_manager.core.db import create_db_and_tables
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """アプリケーションのライフサイクルイベントを管理します。"""
+    """Manage application lifecycle events."""
     # 起動時
     create_db_and_tables()
     yield
@@ -32,23 +32,23 @@ app.include_router(tools_router, prefix="/api")
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
-    """ツール一覧ページ（ホームページ）をレンダリングします。"""
+    """Render the tools list page (home page)."""
     return templates.TemplateResponse("index.html", {"request": request})
 
 
 @app.get("/tools/create", response_class=HTMLResponse)
 async def create_tool_page(request: Request):
-    """ツール作成ページをレンダリングします。"""
+    """Render the tool creation page."""
     return templates.TemplateResponse("create.html", {"request": request})
 
 
 @app.get("/tools/edit/{tool_id}", response_class=HTMLResponse)
 async def edit_tool_page(request: Request, tool_id: int):
-    """ツール編集ページをレンダリングします。"""
+    """Render the tool edit page."""
     return templates.TemplateResponse("edit.html", {"request": request, "tool_id": tool_id})
 
 
 @app.get("/tools/view/{tool_id}", response_class=HTMLResponse)
 async def view_tool_page(request: Request, tool_id: int):
-    """ツール表示ページをレンダリングします。"""
+    """Render the tool viewer page."""
     return templates.TemplateResponse("tool_viewer.html", {"request": request, "tool_id": tool_id})
