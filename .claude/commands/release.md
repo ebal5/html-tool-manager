@@ -1,6 +1,6 @@
 ---
 description: リリース作業を自動化（チェック、テスト、Docker確認、タグ作成）
-allowed-tools: Bash(git status:*), Bash(git branch:*), Bash(git fetch:*), Bash(git describe:*), Bash(git log:*), Bash(git add:*), Bash(git commit:*), Bash(git tag:*), Bash(git push:*), Bash(uv run pytest:*), Bash(ruff:*), Bash(uv run bandit:*), Bash(npx @biomejs/biome:*), Bash(docker build:*), Bash(docker run:*), Bash(docker stop:*), Bash(docker rm:*), Bash(docker rmi:*), Bash(curl:*), Bash(sleep:*), Edit, Read
+allowed-tools: Bash(git status:*), Bash(git branch:*), Bash(git fetch:*), Bash(git describe:*), Bash(git log:*), Bash(git add:*), Bash(git commit:*), Bash(git tag:*), Bash(git push:*), Bash(uv run pytest:*), Bash(ruff:*), Bash(uv run mypy:*), Bash(uv run bandit:*), Bash(uv run pip-audit:*), Bash(npx @biomejs/biome:*), Bash(docker build:*), Bash(docker run:*), Bash(docker stop:*), Bash(docker rm:*), Bash(docker rmi:*), Bash(curl:*), Bash(sleep:*), Edit, Read
 argument-hint: [version: patch|minor|major|x.y.z]
 ---
 
@@ -40,30 +40,42 @@ argument-hint: [version: patch|minor|major|x.y.z]
 ## Phase 2: 品質チェック
 
 すべてのチェックを実行し、結果をサマリー表示。失敗があれば中断。
+（速いチェックを先に実行してfail-fastを実現）
 
-1. **テスト実行**
-   ```bash
-   uv run pytest -v
-   ```
-
-2. **Lintチェック**
+1. **Lintチェック**
    ```bash
    ruff check . && ruff format --check .
    ```
 
-3. **セキュリティスキャン**
+2. **フロントエンドLintチェック**
+   ```bash
+   npx @biomejs/biome check static/js/
+   ```
+   - エラーがあれば中断
+   - 修正が必要な場合: `npx @biomejs/biome check --write static/js/`
+
+3. **型チェック**
+   ```bash
+   uv run mypy src/
+   ```
+
+4. **テスト実行**
+   ```bash
+   uv run pytest -v
+   ```
+
+5. **セキュリティスキャン**
    ```bash
    uv run bandit -r src/
    ```
    - HIGH/MEDIUM の問題があれば中断
    - LOW のみなら警告として続行可
 
-4. **フロントエンドLintチェック**
+6. **依存関係の脆弱性スキャン**
    ```bash
-   npx @biomejs/biome check static/js/
+   uv run pip-audit
    ```
-   - エラーがあれば中断
-   - 修正が必要な場合: `npx @biomejs/biome check --write static/js/`
+   - 脆弱性が検出された場合は警告を表示し、継続するか確認
 
 ## Phase 3: Docker動作確認
 
@@ -93,7 +105,7 @@ argument-hint: [version: patch|minor|major|x.y.z]
    ```
 
 5. **ヘルスチェック**（リトライ付き）
-   - 最大30秒間、5秒間隔でヘルスチェックを実行（以下を単一スクリプトとして実行）:
+   - 最大6回試行、5秒間隔でヘルスチェックを実行（以下を単一スクリプトとして実行）:
      ```bash
      HEALTH_STATUS="unhealthy"
      for i in 1 2 3 4 5 6; do
