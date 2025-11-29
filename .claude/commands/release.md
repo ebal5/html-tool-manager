@@ -1,6 +1,6 @@
 ---
-description: リリース作業を自動化（チェック、テスト、Docker確認、タグ作成）
-allowed-tools: Bash(git status:*), Bash(git branch:*), Bash(git fetch:*), Bash(git describe:*), Bash(git log:*), Bash(git add:*), Bash(git commit:*), Bash(git tag:*), Bash(git push:*), Bash(uv run pytest:*), Bash(ruff:*), Bash(uv run mypy:*), Bash(uv run bandit:*), Bash(uv run pip-audit:*), Bash(npx @biomejs/biome:*), Bash(docker build:*), Bash(docker run:*), Bash(docker stop:*), Bash(docker rm:*), Bash(docker rmi:*), Bash(curl:*), Bash(sleep:*), Edit, Read
+description: リリース作業を自動化（チェック、テスト、Docker確認、PR作成）
+allowed-tools: Bash(git status:*), Bash(git branch:*), Bash(git fetch:*), Bash(git describe:*), Bash(git log:*), Bash(git add:*), Bash(git commit:*), Bash(git checkout:*), Bash(git push:*), Bash(gh pr create:*), Bash(uv run pytest:*), Bash(ruff:*), Bash(uv run mypy:*), Bash(uv run bandit:*), Bash(uv run pip-audit:*), Bash(npx @biomejs/biome:*), Bash(docker build:*), Bash(docker run:*), Bash(docker stop:*), Bash(docker rm:*), Bash(docker rmi:*), Bash(curl:*), Bash(sleep:*), Edit, Read
 argument-hint: [version: patch|minor|major|x.y.z]
 ---
 
@@ -158,48 +158,54 @@ argument-hint: [version: patch|minor|major|x.y.z]
    - 提案するバージョンを表示
    - 続行するか確認を取る
 
-## Phase 5: リリース実行
+## Phase 5: リリースPR作成
 
-1. **pyproject.toml のバージョンを更新**
+1. **リリースブランチを作成**
+   ```bash
+   git checkout -b release/v<version>
+   ```
+
+2. **pyproject.toml のバージョンを更新**
    - Editツールで `version = "x.y.z"` の行を新しいバージョンに書き換える
 
-2. **変更をコミット**
+3. **変更をコミット**
    ```bash
    git add pyproject.toml
    git commit -m "chore: bump version to <version>"
    ```
 
-3. **タグメッセージを作成**
-   - 変更履歴を整形してタグメッセージにする
-
-4. **タグの存在確認**
+4. **ブランチをプッシュ**
    ```bash
-   git tag -l "v<version>"
-   ```
-   - 同名のタグが既に存在する場合はエラーにして中断
-
-5. **タグを作成**
-   ```bash
-   git tag -a v<version> -m "<message>"
+   git push -u origin release/v<version>
    ```
 
-6. **プッシュの確認**
-   - 作成されたタグを表示
-   - **重要**: `git push origin main v<version>` を実行するか明示的に確認を取る
-   - ユーザーの承認なしにプッシュしない
-
-7. **プッシュ実行**（承認後のみ）
+5. **PRを作成**
+   - 変更履歴を整形してPR本文を作成
    ```bash
-   git push origin main v<version>
+   gh pr create --title "Release v<version>" --body "$(cat <<'EOF'
+   ## Release v<version>
+
+   ### Changes since v<前バージョン>
+   <変更履歴をここに挿入>
+
+   ---
+   マージ後、GitHub Actionsが自動でタグとリリースを作成します。
+   EOF
+   )"
    ```
 
-8. **完了報告**
-   - 作成されたタグ名
-   - 次のアクション（GitHub Releasesでのリリースノート作成など）
+6. **mainブランチに戻る**
+   ```bash
+   git checkout main
+   ```
+
+7. **完了報告**
+   - 作成されたPR URLを表示
+   - 「PRをマージすると、GitHub Actionsが自動でタグ `v<version>` とリリースを作成します」と案内
 
 ## 注意事項
 
-- **破壊的操作**: タグのプッシュは取り消しが難しいため、必ずユーザー確認を取る
+- **タグ作成はGitHub Actionsが担当**: PRマージ時に自動でタグとリリースが作成される
 - **Dockerクリーンアップ**: テスト用コンテナ・イメージは必ず削除する
 - **エラー時の中断**: 各フェーズで問題が発生したら、その時点で中断して報告する
 - **セキュリティ警告**: LOWレベルは許容可能、HIGH/MEDIUMは対応が必要
