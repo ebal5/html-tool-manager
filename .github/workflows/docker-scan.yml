@@ -1,0 +1,73 @@
+name: Docker Security Scan
+
+on:
+  workflow_call:
+    inputs:
+      upload-sarif:
+        description: "Upload scan results to GitHub Security tab"
+        required: false
+        default: true
+        type: boolean
+    outputs:
+      scan-passed:
+        description: "Whether the security scan passed"
+        value: ${{ jobs.scan.outputs.passed }}
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    outputs:
+      passed: ${{ steps.scan-result.outputs.passed }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image for scanning
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:scan
+          cache-from: type=gha
+
+      - name: Run Trivy vulnerability scanner
+        id: trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:scan"
+          format: "sarif"
+          output: "trivy-results.sarif"
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: "CRITICAL,HIGH"
+        continue-on-error: true
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: inputs.upload-sarif && always()
+        with:
+          sarif_file: "trivy-results.sarif"
+
+      - name: Set scan result
+        id: scan-result
+        run: |
+          if [ "${{ steps.trivy.outcome }}" == "success" ]; then
+            echo "passed=true" >> $GITHUB_OUTPUT
+            echo "Security scan passed"
+          else
+            echo "passed=false" >> $GITHUB_OUTPUT
+            echo "Security scan failed - vulnerabilities found"
+            exit 1
+          fi
