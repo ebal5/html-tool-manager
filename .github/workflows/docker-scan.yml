@@ -42,9 +42,18 @@ jobs:
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:scan
           no-cache: true
 
+      - name: Run Trivy (table output for debugging)
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:scan"
+          format: "table"
+          ignore-unfixed: true
+          severity: "CRITICAL,HIGH"
+        continue-on-error: true
+
       - name: Run Trivy vulnerability scanner
         id: trivy
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.33.1
         with:
           image-ref: "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:scan"
           format: "sarif"
