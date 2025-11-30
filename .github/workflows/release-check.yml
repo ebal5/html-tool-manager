@@ -1,0 +1,23 @@
+name: Release Branch Check
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  check-release-branch:
+    # Only run for PRs from release/* branches
+    if: startsWith(github.head_ref, 'release/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Release branch detected
+        run: echo "Running release checks for branch ${{ github.head_ref }}"
+
+  docker-security-scan:
+    needs: check-release-branch
+    if: startsWith(github.head_ref, 'release/')
+    uses: ./.github/workflows/docker-scan.yml
+    permissions:
+      contents: read
+      security-events: write

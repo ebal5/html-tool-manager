@@ -29,6 +29,7 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
       tag_created: ${{ steps.create_tag.outputs.created }}
+      should_release: ${{ steps.create_tag.outputs.created == 'true' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -64,16 +65,26 @@ jobs:
           echo "created=true" >> $GITHUB_OUTPUT
           echo "Created and pushed tag ${{ steps.version.outputs.version }}"
 
-  build-and-push:
+  security-scan:
     needs: create-tag
     if: |
       always() &&
       (needs.create-tag.outputs.tag_created == 'true' || github.event_name == 'workflow_dispatch')
+    uses: ./.github/workflows/docker-scan.yml
+    permissions:
+      contents: read
+      security-events: write
+
+  build-and-push:
+    needs: [create-tag, security-scan]
+    if: |
+      always() &&
+      (needs.create-tag.outputs.tag_created == 'true' || github.event_name == 'workflow_dispatch') &&
+      needs.security-scan.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
       packages: write
-      security-events: write
 
     steps:
       - name: Checkout repository
@@ -120,31 +131,6 @@ jobs:
             type=raw,value=${{ steps.get_version.outputs.major_minor }},enable=${{ steps.get_version.outputs.major_minor != '' }}
             type=sha,prefix=sha-
             type=raw,value=latest,enable=${{ startsWith(steps.get_version.outputs.version, 'v') && !contains(steps.get_version.outputs.version, '-') }}
-
-      - name: Build Docker image for scanning
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: false
-          load: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:scan
-          cache-from: type=gha
-
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:scan'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-          exit-code: '1'
-          ignore-unfixed: true
-          severity: 'CRITICAL,HIGH'
-
-      - name: Upload Trivy results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: 'trivy-results.sarif'
 
       - name: Build and push Docker image
         id: push
