@@ -61,6 +61,7 @@ jobs:
           exit-code: "1"
           ignore-unfixed: true
           severity: "CRITICAL,HIGH"
+          limit-severities-for-sarif: true
         continue-on-error: true
 
       - name: Upload Trivy results to GitHub Security
