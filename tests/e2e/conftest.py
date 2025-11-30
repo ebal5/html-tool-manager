@@ -29,21 +29,35 @@ def _wait_for_server(url: str, timeout: float = 10.0) -> bool:
         True if server is available, False if timeout reached
 
     """
+    import sys
+
     start_time = time.time()
+    last_error = None
     while time.time() - start_time < timeout:
         try:
             response = requests.get(url, timeout=1)
             if response.status_code == 200:
                 return True
-        except requests.exceptions.RequestException:
-            pass
+        except requests.exceptions.RequestException as e:
+            last_error = e
         time.sleep(0.1)
+
+    # Log the last error for debugging
+    if last_error:
+        print(f"Server health check failed: {last_error}", file=sys.stderr)
     return False
 
 
 @pytest.fixture(scope="session")
 def live_server() -> Generator[str, None, None]:
     """Start a test server for E2E tests.
+
+    Note:
+        This fixture uses session scope for performance. Tests are isolated
+        via the clean_database fixture which cleans data before/after each test.
+        This works because pytest runs tests sequentially by default.
+        If parallel execution (pytest-xdist) is needed, consider using
+        scope="function" or isolated database files per worker.
 
     Yields:
         Base URL of the test server
