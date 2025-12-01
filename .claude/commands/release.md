@@ -90,9 +90,9 @@ argument-hint: [version: patch|minor|major|x.y.z]
 
 2. **ポート使用状況の確認**
    ```bash
-   curl -s -o /dev/null -w "%{http_code}" http://localhost:8888/ 2>/dev/null || echo "port_free"
+   curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/ 2>/dev/null || echo "port_free"
    ```
-   - ポート8888が使用中の場合: 使用中のサービスを報告し、停止を促して中断
+   - ポート8080が使用中の場合: 使用中のサービスを報告し、停止を促して中断
 
 3. **ビルド**
    ```bash
@@ -101,7 +101,7 @@ argument-hint: [version: patch|minor|major|x.y.z]
 
 4. **起動**
    ```bash
-   docker run -d -p 8888:80 --name htm-release-test html-tool-manager:release-test
+   docker run -d -p 8080:80 --name htm-release-test html-tool-manager:release-test
    ```
 
 5. **ヘルスチェック**（リトライ付き）
@@ -109,7 +109,7 @@ argument-hint: [version: patch|minor|major|x.y.z]
      ```bash
      HEALTH_STATUS="unhealthy"
      for i in 1 2 3 4 5 6; do
-       if curl -s -f http://localhost:8888/ > /dev/null 2>&1; then
+       if curl -s -f http://localhost:8080/ > /dev/null 2>&1; then
          HEALTH_STATUS="healthy"
          break
        fi
@@ -168,18 +168,21 @@ argument-hint: [version: patch|minor|major|x.y.z]
 2. **pyproject.toml のバージョンを更新**
    - Editツールで `version = "x.y.z"` の行を新しいバージョンに書き換える
 
-3. **変更をコミット**
+3. **README.md のDockerイメージバージョンを更新**
+   - Editツールで `docker pull ghcr.io/ebal5/html-tool-manager:x.y.z` の行を新しいバージョンに書き換える
+
+4. **変更をコミット**
    ```bash
-   git add pyproject.toml
+   git add pyproject.toml uv.lock README.md
    git commit -m "chore: bump version to <version>"
    ```
 
-4. **ブランチをプッシュ**
+5. **ブランチをプッシュ**
    ```bash
    git push -u origin release/v<version>
    ```
 
-5. **PRを作成**
+6. **PRを作成**
    - 変更履歴を整形してPR本文を作成
    ```bash
    gh pr create --title "Release v<version>" --body "$(cat <<'EOF'
@@ -194,12 +197,12 @@ argument-hint: [version: patch|minor|major|x.y.z]
    )"
    ```
 
-6. **mainブランチに戻る**
+7. **mainブランチに戻る**
    ```bash
    git checkout main
    ```
 
-7. **完了報告**
+8. **完了報告**
    - 作成されたPR URLを表示
    - 「PRをマージすると、GitHub Actionsが自動でタグ `v<version>` とリリースを作成します」と案内
 
