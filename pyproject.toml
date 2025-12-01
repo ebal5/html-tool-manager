@@ -43,6 +43,9 @@ indent-style = "space"
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
+markers = [
+    "e2e: End-to-end tests (deselect with '-m \"not e2e\"')",
+]
 
 [tool.poe.tasks.dev]
 cmd = "uvicorn html_tool_manager.main:app --reload"
@@ -64,10 +67,19 @@ cmd = "mypy src/"
 help = "Astral製の実験的型チェッカー ty を実行（参考用）"
 cmd = "ty check src/"
 
+[tool.poe.tasks.e2e]
+help = "E2Eテストを実行（ヘッドレスモード）"
+cmd = "pytest -v -m e2e"
+
+[tool.poe.tasks.e2e-headed]
+help = "E2Eテストを実行（ブラウザ表示）"
+cmd = "pytest -v -m e2e --headed"
+
 [dependency-groups]
 dev = [
     "pytest",
     "pytest-cov",
+    "pytest-playwright",
     "poethepoet",
     "httpx",
     "ruff",
