@@ -1,0 +1,44 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+.venv
+venv/
+
+# Testing
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Linting/Type checking
+.mypy_cache/
+.ruff_cache/
+
+# Documentation
+docs/
+*.md
+
+# IDE
+.idea/
+.vscode/
+
+# CI/CD
+.github/
+
+# Claude Code
+.claude/
+
+# Local development
+sql_app.db
+sql_app.db-journal
+.env
+.env.*
+*.log
+
+# User content (use volumes)
+static/tools/

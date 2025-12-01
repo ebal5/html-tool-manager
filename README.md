@@ -89,20 +89,20 @@
 docker pull ghcr.io/ebal5/html-tool-manager:latest
 
 # 特定バージョンを取得
-docker pull ghcr.io/ebal5/html-tool-manager:0.1.0
+docker pull ghcr.io/ebal5/html-tool-manager:0.1.5
 ```
 
 **コンテナの実行:**
 
 ```bash
-docker run -d -p 8888:80 \
+docker run -d -p 8080:80 \
   -v html-tool-manager-data:/app/static/tools \
   -v html-tool-manager-db:/app \
   --name html-tool-manager-app \
   ghcr.io/ebal5/html-tool-manager:latest
 ```
 
-アプリケーションは `http://127.0.0.1:8888` で利用可能になります。
+アプリケーションは `http://127.0.0.1:8080` で利用可能になります。
 
 #### ローカルでビルド
 
@@ -113,7 +113,7 @@ docker run -d -p 8888:80 \
 
 2.  **Dockerコンテナの実行:**
     ```bash
-    docker run -d -p 8888:80 \
+    docker run -d -p 8080:80 \
       -v html-tool-manager-data:/app/static/tools \
       -v html-tool-manager-db:/app \
       --name html-tool-manager-app \
