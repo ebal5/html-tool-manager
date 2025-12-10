@@ -31,7 +31,7 @@ async def add_security_headers(request: Request, call_next):
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
         "script-src 'self' https://unpkg.com https://cdn.tailwindcss.com 'unsafe-inline' 'unsafe-eval'; "
-        "style-src 'self' https://cdn.tailwindcss.com 'unsafe-inline'; "
+        "style-src 'self' https://cdn.jsdelivr.net https://cdn.tailwindcss.com 'unsafe-inline'; "
         "frame-ancestors 'none'; "
         "base-uri 'self';"
     )
