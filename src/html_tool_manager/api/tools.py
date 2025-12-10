@@ -67,9 +67,18 @@ def update_tool(tool_id: int, tool_data: ToolCreate, session: Session = Depends(
 
     # html_contentが提供された場合は、既存のファイルを上書き
     if tool_data.html_content is not None:
+        from html_tool_manager.models.tool import ToolType
+        from html_tool_manager.templates.react_template import generate_react_html
+
+        # tool_type が React の場合はテンプレートでラップ
+        if tool_data.tool_type == ToolType.REACT:
+            final_html = generate_react_html(tool_data.html_content)
+        else:
+            final_html = tool_data.html_content
+
         # アプリによって作成された安全なパスであることを前提とする
-        with open(tool_to_update.filepath, "w") as f:
-            f.write(tool_data.html_content)
+        with open(tool_to_update.filepath, "w", encoding="utf-8") as f:
+            f.write(final_html)
 
     # メタデータを更新
     update_data = tool_data.model_dump(exclude_unset=True, exclude={"html_content"})
@@ -118,6 +127,7 @@ def export_tools(export_request: ToolExportRequest, session: Session = Depends(g
                 "description": tool.description,
                 "tags": tool.tags,
                 "html_content": html_content,
+                "tool_type": tool.tool_type,
             }
             tools_to_export.append(tool_data)
 

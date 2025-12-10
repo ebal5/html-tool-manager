@@ -27,7 +27,7 @@ try:
     columns = [col[1] for col in cursor.fetchall()]
 
     if "tool_type" in columns:
-        print("tool_type カラムは既に存在します。マイグレーションをスキップします。")
+        print("tool_type カラムは既に存在します。")
     else:
         print("tool_type カラムを追加しています...")
         cursor.execute("ALTER TABLE tool ADD COLUMN tool_type TEXT DEFAULT 'html'")
@@ -38,6 +38,18 @@ try:
         cursor.execute("SELECT COUNT(*) FROM tool")
         count = cursor.fetchone()[0]
         print(f"✓ {count} 件のレコードに tool_type='html' が設定されました。")
+
+    # tool_type インデックスが存在するか確認
+    cursor.execute("PRAGMA index_list(tool)")
+    indexes = [idx[1] for idx in cursor.fetchall()]
+
+    if "idx_tool_type" in indexes:
+        print("tool_type インデックスは既に存在します。")
+    else:
+        print("tool_type インデックスを追加しています...")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_tool_type ON tool(tool_type)")
+        conn.commit()
+        print("✓ tool_type インデックスを追加しました。")
 
     conn.close()
     print("マイグレーション完了！")

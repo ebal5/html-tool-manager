@@ -22,6 +22,22 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 app = FastAPI(lifespan=lifespan)
 
+
+# セキュリティヘッダーのミドルウェア
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    """Add security headers to all responses."""
+    response = await call_next(request)
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' https://unpkg.com https://cdn.tailwindcss.com 'unsafe-inline'; "
+        "style-src 'self' https://cdn.tailwindcss.com 'unsafe-inline'; "
+        "frame-ancestors 'none'; "
+        "base-uri 'self';"
+    )
+    return response
+
+
 # 静的ファイルの提供
 app.mount("/static", StaticFiles(directory="static"), name="static")
 

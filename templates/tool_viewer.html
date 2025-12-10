@@ -90,6 +90,7 @@
                 if (tool.filepath && tool.filepath.startsWith(TOOL_PATH_PREFIX)) {
                     toolContentEl.innerHTML = '';
                     const iframe = document.createElement('iframe');
+                    iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin');
                     iframe.src = '/' + tool.filepath;
                     iframe.title = tool.name; // アクセシビリティ: スクリーンリーダー用
                     toolContentEl.appendChild(iframe);

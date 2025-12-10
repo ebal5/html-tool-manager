@@ -92,7 +92,30 @@
                     const strong = document.createElement('strong');
                     strong.textContent = newTool.name;
                     messageDiv.appendChild(strong);
-                    messageDiv.appendChild(document.createTextNode('」を作成しました。'));
+                    messageDiv.appendChild(document.createTextNode('」を'));
+
+                    // 自動検出結果のフィードバック表示
+                    const wasAutoDetected = !validation.data.tool_type || validation.data.tool_type === '';
+                    if (wasAutoDetected && newTool.tool_type) {
+                        const typeBadge = document.createElement('code');
+                        typeBadge.textContent = newTool.tool_type === 'react' ? 'React' : 'HTML';
+                        typeBadge.style.padding = '0.25rem 0.5rem';
+                        typeBadge.style.borderRadius = '0.25rem';
+                        typeBadge.style.fontSize = '0.875rem';
+                        if (newTool.tool_type === 'react') {
+                            typeBadge.style.backgroundColor = '#61DAFB';
+                            typeBadge.style.color = '#000';
+                            typeBadge.setAttribute('aria-label', 'ツールタイプ: React');
+                        } else {
+                            typeBadge.style.backgroundColor = '#E34C26';
+                            typeBadge.style.color = '#fff';
+                            typeBadge.setAttribute('aria-label', 'ツールタイプ: HTML');
+                        }
+                        messageDiv.appendChild(typeBadge);
+                        messageDiv.appendChild(document.createTextNode('として'));
+                    }
+
+                    messageDiv.appendChild(document.createTextNode('作成しました。'));
                     const viewLink = document.createElement('a');
                     viewLink.href = '/tools/view/' + newTool.id;
                     viewLink.textContent = '表示';
