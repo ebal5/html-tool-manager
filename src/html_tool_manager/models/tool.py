@@ -34,7 +34,7 @@ class ToolBase(SQLModel):
     description: Optional[str] = Field(default=None, max_length=DESCRIPTION_MAX_LENGTH)
     tags: List[str] = Field(default_factory=list, sa_column=Column(JSON))
     filepath: Optional[str] = None  # APIリクエスト時にはオプショナル
-    tool_type: ToolType = Field(default=ToolType.HTML)
+    tool_type: Optional[ToolType] = Field(default=ToolType.HTML)
 
     @field_validator("name", mode="before")
     @classmethod

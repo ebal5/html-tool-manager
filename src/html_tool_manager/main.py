@@ -5,6 +5,8 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.middleware.base import RequestResponseEndpoint
+from starlette.responses import Response
 
 from html_tool_manager.api.tools import router as tools_router
 from html_tool_manager.core.db import create_db_and_tables
@@ -25,7 +27,7 @@ app = FastAPI(lifespan=lifespan)
 
 # セキュリティヘッダーのミドルウェア
 @app.middleware("http")
-async def add_security_headers(request: Request, call_next):
+async def add_security_headers(request: Request, call_next: RequestResponseEndpoint) -> Response:
     """Add security headers to all responses."""
     response = await call_next(request)
 
