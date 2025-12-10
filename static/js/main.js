@@ -145,29 +145,38 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  searchBox.addEventListener('input', () => {
-    clearTimeout(debounceTimer);
+  // 検索ボックスがあるページでのみイベントリスナーを登録
+  if (searchBox) {
+    searchBox.addEventListener('input', () => {
+      clearTimeout(debounceTimer);
 
-    const query = searchBox.value.trim();
-    if (query.endsWith(':')) {
-      return;
-    }
+      const query = searchBox.value.trim();
+      if (query.endsWith(':')) {
+        return;
+      }
 
-    debounceTimer = setTimeout(fetchTools, 300);
-  });
+      debounceTimer = setTimeout(fetchTools, 300);
+    });
+  }
 
-  sortSelect.addEventListener('change', fetchTools);
+  if (sortSelect) {
+    sortSelect.addEventListener('change', fetchTools);
+  }
 
-  // Initial load
-  fetchTools();
+  // Initial load（コンテナがあるページでのみ）
+  if (container) {
+    fetchTools();
+  }
 
   // --- ツール操作UIの表示/非表示を切り替える ---
-  toggleToolOperationsBtn.addEventListener('click', () => {
-    toolOperationsContainer.classList.toggle('hidden');
-    document.querySelectorAll('.checkbox-column').forEach((el) => {
-      el.classList.toggle('hidden');
+  if (toggleToolOperationsBtn) {
+    toggleToolOperationsBtn.addEventListener('click', () => {
+      toolOperationsContainer.classList.toggle('hidden');
+      document.querySelectorAll('.checkbox-column').forEach((el) => {
+        el.classList.toggle('hidden');
+      });
     });
-  });
+  }
 
   // --- ツール削除機能 ---
   window.deleteTool = (toolId, buttonElement) => {
@@ -195,85 +204,91 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // --- ツールエクスポート機能 ---
-  exportSelectedBtn.addEventListener('click', async () => {
-    const selectedToolIds = Array.from(
-      document.querySelectorAll('.tool-checkbox:checked'),
-    )
-      .map((checkbox) => checkbox.closest('tr').dataset.toolId)
-      .filter((id) => id); // 無効なIDを除外
+  if (exportSelectedBtn) {
+    exportSelectedBtn.addEventListener('click', async () => {
+      const selectedToolIds = Array.from(
+        document.querySelectorAll('.tool-checkbox:checked'),
+      )
+        .map((checkbox) => checkbox.closest('tr').dataset.toolId)
+        .filter((id) => id); // 無効なIDを除外
 
-    if (selectedToolIds.length === 0) {
-      alert('エクスポートするツールを選択してください。');
-      return;
-    }
-
-    exportSelectedBtn.setAttribute('aria-busy', 'true');
-    try {
-      const response = await fetch('/api/tools/export', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ tool_ids: selectedToolIds }),
-      });
-
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = url;
-        a.download = 'tools-export.pack';
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        alert(`${selectedToolIds.length}個のツールがエクスポートされました。`);
-      } else {
-        const errorText = await response.text();
-        alert(`エクスポート失敗: ${response.status} - ${errorText}`);
+      if (selectedToolIds.length === 0) {
+        alert('エクスポートするツールを選択してください。');
+        return;
       }
-    } catch (error) {
-      console.error('エクスポートエラー:', error);
-      alert('エクスポート中にエラーが発生しました。');
-    } finally {
-      exportSelectedBtn.removeAttribute('aria-busy');
-    }
-  });
+
+      exportSelectedBtn.setAttribute('aria-busy', 'true');
+      try {
+        const response = await fetch('/api/tools/export', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ tool_ids: selectedToolIds }),
+        });
+
+        if (response.ok) {
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.style.display = 'none';
+          a.href = url;
+          a.download = 'tools-export.pack';
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          alert(
+            `${selectedToolIds.length}個のツールがエクスポートされました。`,
+          );
+        } else {
+          const errorText = await response.text();
+          alert(`エクスポート失敗: ${response.status} - ${errorText}`);
+        }
+      } catch (error) {
+        console.error('エクスポートエラー:', error);
+        alert('エクスポート中にエラーが発生しました。');
+      } finally {
+        exportSelectedBtn.removeAttribute('aria-busy');
+      }
+    });
+  }
 
   // --- ツールインポート機能 ---
-  importBtn.addEventListener('click', async () => {
-    const file = importFileInput.files[0];
-    if (!file) {
-      alert('インポートするファイルを選択してください。');
-      return;
-    }
-
-    importBtn.setAttribute('aria-busy', 'true');
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      const response = await fetch('/api/tools/import', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        alert(
-          `${result.imported_count}個のツールが正常にインポートされました。`,
-        );
-        fetchTools(); // リストをリロード
-      } else {
-        const errorText = await response.text();
-        alert(`インポート失敗: ${response.status} - ${errorText}`);
+  if (importBtn) {
+    importBtn.addEventListener('click', async () => {
+      const file = importFileInput.files[0];
+      if (!file) {
+        alert('インポートするファイルを選択してください。');
+        return;
       }
-    } catch (error) {
-      console.error('インポートエラー:', error);
-      alert('インポート中にエラーが発生しました。');
-    } finally {
-      importBtn.removeAttribute('aria-busy');
-      importFileInput.value = ''; // ファイル選択をリセット
-    }
-  });
+
+      importBtn.setAttribute('aria-busy', 'true');
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const response = await fetch('/api/tools/import', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          alert(
+            `${result.imported_count}個のツールが正常にインポートされました。`,
+          );
+          fetchTools(); // リストをリロード
+        } else {
+          const errorText = await response.text();
+          alert(`インポート失敗: ${response.status} - ${errorText}`);
+        }
+      } catch (error) {
+        console.error('インポートエラー:', error);
+        alert('インポート中にエラーが発生しました。');
+      } finally {
+        importBtn.removeAttribute('aria-busy');
+        importFileInput.value = ''; // ファイル選択をリセット
+      }
+    });
+  }
 });

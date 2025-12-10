@@ -28,14 +28,18 @@ app = FastAPI(lifespan=lifespan)
 async def add_security_headers(request: Request, call_next):
     """Add security headers to all responses."""
     response = await call_next(request)
-    response.headers["Content-Security-Policy"] = (
-        "default-src 'self'; "
-        "script-src 'self' https://unpkg.com https://cdn.tailwindcss.com 'unsafe-inline' 'unsafe-eval'; "
-        "style-src 'self' https://cdn.jsdelivr.net https://cdn.tailwindcss.com 'unsafe-inline'; "
-        "img-src 'self' data:; "
-        "frame-ancestors 'none'; "
-        "base-uri 'self';"
-    )
+
+    # ツール用HTMLにはCSPを適用しない（iframeで表示するため）
+    if not request.url.path.startswith("/static/tools/"):
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' https://unpkg.com https://cdn.tailwindcss.com 'unsafe-inline' 'unsafe-eval'; "
+            "style-src 'self' https://cdn.jsdelivr.net https://cdn.tailwindcss.com 'unsafe-inline'; "
+            "img-src 'self' data:; "
+            "frame-ancestors 'none'; "
+            "base-uri 'self';"
+        )
+
     return response
 
 
