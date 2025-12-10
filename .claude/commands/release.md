@@ -1,6 +1,6 @@
 ---
 description: リリース作業を自動化（チェック、テスト、Docker確認、PR作成）
-allowed-tools: Bash(git status:*), Bash(git branch:*), Bash(git fetch:*), Bash(git describe:*), Bash(git log:*), Bash(git add:*), Bash(git commit:*), Bash(git switch:*), Bash(git push:*), Bash(gh pr create:*), Bash(uv run pytest:*), Bash(uv sync:*), Bash(ruff:*), Bash(uv run mypy:*), Bash(uv run bandit:*), Bash(uv run pip-audit:*), Bash(npx @biomejs/biome:*), Bash(docker build:*), Bash(docker run:*), Bash(docker stop:*), Bash(docker rm:*), Bash(docker rmi:*), Bash(curl:*), Bash(sleep:*), Edit, Read
+allowed-tools: Bash(git status:*), Bash(git branch:*), Bash(git fetch:*), Bash(git describe:*), Bash(git log:*), Bash(git add:*), Bash(git commit:*), Bash(git switch:*), Bash(git push:*), Bash(gh pr create:*), Bash(uv run pytest:*), Bash(uv sync:*), Bash(ruff:*), Bash(uv run mypy:*), Bash(uv run bandit:*), Bash(uv run pip-audit:*), Bash(npx @biomejs/biome:*), Bash(docker build:*), Bash(docker run:*), Bash(docker stop:*), Bash(docker rm:*), Bash(docker rmi:*), Bash(docker ps:*), Bash(docker logs:*), Bash(curl:*), Bash(sleep:*), Bash(echo:*), Edit, Read
 argument-hint: [version: patch|minor|major|x.y.z]
 ---
 
