@@ -90,3 +90,53 @@ function App() {
 """
     result = _transform_imports_exports(code)
     assert "const helper" in result
+
+
+def test_transform_arrow_function_export():
+    """Arrow function export が const App に変換されることをテスト。"""
+    code = """
+export default const MyComponent = () => {
+    return <div>Test</div>;
+};
+"""
+    result = _transform_imports_exports(code)
+
+    assert "export default" not in result
+    assert "const App =" in result
+
+
+def test_transform_standalone_export_default():
+    """単独の export default Name; が削除されることをテスト。"""
+    code = """
+function MyComponent() {
+    return <div>Test</div>;
+}
+
+export default MyComponent;
+"""
+    result = _transform_imports_exports(code)
+
+    assert "export default" not in result
+    assert "function MyComponent" in result
+
+
+def test_react18_hooks_included_in_template():
+    """React 18 の hooks がテンプレートに含まれることをテスト。"""
+    jsx_code = "function App() { return <div>Test</div>; }"
+    result = generate_react_html(jsx_code)
+
+    # 基本 hooks
+    assert "useState" in result
+    assert "useEffect" in result
+    assert "useCallback" in result
+    assert "useMemo" in result
+    assert "useRef" in result
+
+    # 追加 hooks
+    assert "useLayoutEffect" in result
+    assert "useImperativeHandle" in result
+
+    # React 18 hooks
+    assert "useTransition" in result
+    assert "useDeferredValue" in result
+    assert "useId" in result

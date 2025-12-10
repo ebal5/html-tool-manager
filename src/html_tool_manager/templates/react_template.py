@@ -51,7 +51,15 @@ def generate_react_html(jsx_code: str) -> str:
     <script type="text/babel" data-type="module">
         // React を UMD グローバルから取得
         const React = window.React;
-        const {{ useState, useCallback, useRef, useEffect, useMemo, useReducer, useContext }} = React;
+        const {{
+            // 基本 hooks
+            useState, useEffect, useContext, useReducer,
+            useCallback, useMemo, useRef,
+            // 追加 hooks
+            useLayoutEffect, useImperativeHandle, useDebugValue,
+            // React 18 hooks
+            useTransition, useDeferredValue, useId, useSyncExternalStore, useInsertionEffect
+        }} = React;
         const ReactDOM = window.ReactDOM;
 
 {transformed_code}
@@ -81,12 +89,23 @@ def _transform_imports_exports(code: str) -> str:
     code = re.sub(r"^import\s+.*?from\s+['\"]react['\"];?\s*$", "", code, flags=re.MULTILINE)
     code = re.sub(r"^import\s+.*?from\s+['\"]react-dom['\"];?\s*$", "", code, flags=re.MULTILINE)
 
-    # export default を削除し、関数名を App に変更
+    # export default function Name を App に変更
     code = re.sub(
         r"export\s+default\s+function\s+(\w+)",
         r"function App",
         code,
     )
+
+    # export default const Name = () => {} を const App = () => {} に変更
+    code = re.sub(
+        r"export\s+default\s+(const|let|var)\s+\w+\s*=",
+        r"const App =",
+        code,
+    )
+
+    # 単独の export default Name; を削除（関数宣言は別の場所にある想定）
+    # この場合、元の関数名がそのまま使われるので App へのリネームは別途必要
+    code = re.sub(r"^export\s+default\s+\w+;?\s*$", "", code, flags=re.MULTILINE)
 
     # 他の export 文も削除
     code = re.sub(r"^export\s+", "", code, flags=re.MULTILINE)
