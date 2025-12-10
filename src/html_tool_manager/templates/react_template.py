@@ -24,12 +24,24 @@ def generate_react_html(jsx_code: str) -> str:
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>React Tool</title>
     <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script
+        src="https://cdn.tailwindcss.com/3.4.1"
+        integrity="sha384-SOMLQz+nKv/ORIYXo3J3NrWJ33oBgGvkHlV9t8i70QVLq8ZtST9Np1gDsVUkk4xN"
+        crossorigin="anonymous"></script>
     <!-- React 18 & ReactDOM -->
-    <script crossorigin src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+    <script
+        crossorigin
+        src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"
+        integrity="sha384-tMH8h3BGESGckSAVGZ82T9n90ztNXxvdwvdM6UoR56cYcf+0iGXBliJ29D+wZ/x8"></script>
+    <script
+        crossorigin
+        src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"
+        integrity="sha384-bm7MnzvK++ykSwVJ2tynSE5TRdN+xL418osEVF2DE/L/gfWHj91J2Sphe582B1Bh"></script>
     <!-- Babel Standalone for JSX transformation -->
-    <script src="https://unpkg.com/@babel/standalone@7.23.5/babel.min.js"></script>
+    <script
+        src="https://unpkg.com/@babel/standalone@7.23.5/babel.min.js"
+        integrity="sha384-1qlE7MZPM2pHD/pBZCU/yB8UCP52RYL8bge/qNdfNBCWToySp8/M+JL2waXU4hjJ"
+        crossorigin="anonymous"></script>
     <style>
         body {{
             margin: 0;

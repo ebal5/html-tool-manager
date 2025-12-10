@@ -29,8 +29,15 @@ async def add_security_headers(request: Request, call_next):
     """Add security headers to all responses."""
     response = await call_next(request)
 
-    # ツール用HTMLにはCSPを適用しない（iframeで表示するため）
-    if not request.url.path.startswith("/static/tools/"):
+    # 共通セキュリティヘッダー
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+
+    # ツール用HTMLには軽量CSP（frame-ancestorsのみ）
+    if request.url.path.startswith("/static/tools/"):
+        response.headers["Content-Security-Policy"] = "frame-ancestors 'self';"
+    else:
+        # アプリケーション本体には完全なCSP
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
             "script-src 'self' https://unpkg.com https://cdn.tailwindcss.com 'unsafe-inline' 'unsafe-eval'; "
