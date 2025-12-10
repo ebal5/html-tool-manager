@@ -10,6 +10,7 @@ const ValidationRules = {
   TAG_MIN_LENGTH: 1,
   TAG_MAX_LENGTH: 50,
   TAGS_MAX_COUNT: 20,
+  TOOL_TYPES: ['html', 'react'],
   // 制御文字パターン（改行・タブを除く）
   // biome-ignore lint/suspicious/noControlCharactersInRegex: 制御文字を検出するための意図的なパターン
   CONTROL_CHARS_PATTERN: /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/,
@@ -156,6 +157,18 @@ function validateToolForm(formData) {
 
   // html_contentはそのまま渡す（サーバー側で処理）
   data.html_content = formData.html_content;
+
+  // tool_type のバリデーション（オプショナル、自動検出を許可）
+  if (
+    formData.tool_type !== null &&
+    formData.tool_type !== undefined &&
+    formData.tool_type !== ''
+  ) {
+    if (!ValidationRules.TOOL_TYPES.includes(formData.tool_type)) {
+      errors.push('無効なツールタイプです');
+    }
+  }
+  data.tool_type = formData.tool_type;
 
   return {
     valid: errors.length === 0,

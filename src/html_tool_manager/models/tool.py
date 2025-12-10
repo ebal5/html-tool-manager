@@ -1,5 +1,6 @@
 import re
 from datetime import datetime, timezone
+from enum import Enum
 from typing import List, Optional
 
 from pydantic import field_validator
@@ -19,6 +20,13 @@ TAG_MAX_LENGTH = 50
 TAGS_MAX_COUNT = 20
 
 
+class ToolType(str, Enum):
+    """Enum defining tool types."""
+
+    HTML = "html"
+    REACT = "react"
+
+
 class ToolBase(SQLModel):
     """Base model representing basic tool information."""
 
@@ -26,6 +34,7 @@ class ToolBase(SQLModel):
     description: Optional[str] = Field(default=None, max_length=DESCRIPTION_MAX_LENGTH)
     tags: List[str] = Field(default_factory=list, sa_column=Column(JSON))
     filepath: Optional[str] = None  # APIリクエスト時にはオプショナル
+    tool_type: ToolType = Field(default=ToolType.HTML)
 
     @field_validator("name", mode="before")
     @classmethod
@@ -93,6 +102,7 @@ class ToolCreate(ToolBase):
     """Data model for API input when creating a tool."""
 
     html_content: Optional[str] = None  # HTMLコンテンツの直接貼り付け用
+    tool_type: Optional[ToolType] = None  # 自動検出を許可するため Optional
 
 
 class ToolRead(ToolBase):

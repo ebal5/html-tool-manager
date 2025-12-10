@@ -44,6 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <th>名前</th>
                         <th>説明</th>
                         <th>タグ</th>
+                        <th>タイプ</th>
                         <th>操作</th>
                     </tr>
                 </thead>
@@ -87,6 +88,23 @@ document.addEventListener('DOMContentLoaded', () => {
           });
         }
 
+        const typeCell = document.createElement('td');
+        const typeBadge = document.createElement('code');
+        const toolType = tool.tool_type || 'html'; // デフォルトは html
+        if (toolType === 'react') {
+          typeBadge.textContent = 'React';
+          typeBadge.style.backgroundColor = '#61DAFB';
+          typeBadge.style.color = '#000';
+        } else {
+          typeBadge.textContent = 'HTML';
+          typeBadge.style.backgroundColor = '#E34C26';
+          typeBadge.style.color = '#fff';
+        }
+        typeBadge.style.padding = '0.25rem 0.5rem';
+        typeBadge.style.borderRadius = '0.25rem';
+        typeBadge.style.fontSize = '0.875rem';
+        typeCell.appendChild(typeBadge);
+
         const actionsCell = document.createElement('td');
         actionsCell.innerHTML = `<div class="action-grid">
                     <a href="/tools/view/${tool.id}" role="button" class="secondary outline">使用</a>
@@ -103,6 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
         tr.appendChild(nameCell);
         tr.appendChild(descCell);
         tr.appendChild(tagsCell);
+        tr.appendChild(typeCell);
         tr.appendChild(actionsCell);
 
         tbody.appendChild(tr);

@@ -31,6 +31,12 @@
             <input type="text" id="tags" name="tags" placeholder="計算, テキスト, ユーティリティ">
             <small>カンマ区切りで入力</small>
 
+            <label for="tool_type">ツールタイプ</label>
+            <select id="tool_type" name="tool_type">
+                <option value="html">HTML</option>
+                <option value="react">React (JSX)</option>
+            </select>
+
             <div id="source-section">
                 <!-- Content will be loaded here by JavaScript -->
             </div>
@@ -48,6 +54,7 @@
         const nameInput = document.getElementById('name');
         const descriptionInput = document.getElementById('description');
         const tagsInput = document.getElementById('tags');
+        const toolTypeSelect = document.getElementById('tool_type');
         const sourceSection = document.getElementById('source-section');
         const messageDiv = document.getElementById('message');
         const submitBtn = document.getElementById('submit-btn');
@@ -76,6 +83,7 @@
                 nameInput.value = tool.name;
                 descriptionInput.value = tool.description || '';
                 tagsInput.value = tool.tags.join(', ');
+                toolTypeSelect.value = tool.tool_type || 'html';
                 originalFilepath = tool.filepath;
 
                 // Check if the tool was created by pasting content
@@ -131,6 +139,7 @@
                 name: nameInput.value,
                 description: descriptionInput.value,
                 tags: tagsInput.value,
+                tool_type: toolTypeSelect.value,
                 html_content: isPastedContent ? document.getElementById('html_content').value : null
             };
 
@@ -147,6 +156,7 @@
                 name: validation.data.name,
                 description: validation.data.description,
                 tags: validation.data.tags,
+                tool_type: validation.data.tool_type,
                 filepath: originalFilepath
             };
 
