@@ -33,10 +33,9 @@ async def add_security_headers(request: Request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
 
-    # ツール用HTMLには軽量CSP（frame-ancestorsのみ）
-    if request.url.path.startswith("/static/tools/"):
-        response.headers["Content-Security-Policy"] = "frame-ancestors 'self';"
-    else:
+    # ツール用HTMLにはCSPを設定しない（iframe sandboxで保護）
+    # 理由：ツールごとに使用するCDNが異なり、完全なリストを作成できないため
+    if not request.url.path.startswith("/static/tools/"):
         # アプリケーション本体には完全なCSP
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
