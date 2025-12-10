@@ -23,11 +23,8 @@ def generate_react_html(jsx_code: str) -> str:
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>React Tool</title>
-    <!-- Tailwind CSS -->
-    <script
-        src="https://cdn.tailwindcss.com/3.4.1"
-        integrity="sha384-SOMLQz+nKv/ORIYXo3J3NrWJ33oBgGvkHlV9t8i70QVLq8ZtST9Np1gDsVUkk4xN"
-        crossorigin="anonymous"></script>
+    <!-- Tailwind CSS (SRI なし: CORS 非対応のため) -->
+    <script src="https://cdn.tailwindcss.com/3.4.1"></script>
     <!-- React 18 & ReactDOM -->
     <script
         crossorigin
