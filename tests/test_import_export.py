@@ -70,3 +70,107 @@ def test_import_tools(session: Session, client: TestClient):
     db_names = {item["name"] for item in all_tools}
     assert "Imported Tool A" in db_names
     assert "Imported Tool B" in db_names
+
+
+def test_react_tool_export_import(session: Session, client: TestClient):
+    """React ツールがエクスポート・インポートで tool_type を保持することをテスト。"""
+    # React ツールを作成
+    jsx_code = "import React from 'react';\nconst App = () => <div>Export Test</div>;"
+    tool_data = {
+        "name": "Export React Tool",
+        "description": "React export test",
+        "html_content": jsx_code,
+        "tags": ["react", "export-test"],
+    }
+
+    create_response = client.post("/api/tools/", json=tool_data)
+    assert create_response.status_code == 201
+    tool_id = create_response.json()["id"]
+
+    # エクスポート
+    export_response = client.post("/api/tools/export", json={"tool_ids": [tool_id]})
+    assert export_response.status_code == 200
+
+    exported_data = msgpack.unpackb(export_response.content, raw=False)
+    assert len(exported_data) == 1
+    assert exported_data[0]["tool_type"] == "react"
+    assert exported_data[0]["name"] == "Export React Tool"
+
+    # DB をクリア
+    client.delete(f"/api/tools/{tool_id}")
+
+    # インポート
+    import_response = client.post(
+        "/api/tools/import",
+        files={"file": ("tools.pack", export_response.content, "application/octet-stream")},
+    )
+    assert import_response.status_code == 200
+    assert import_response.json()["imported_count"] == 1
+
+    # インポートされたツールを確認
+    list_response = client.get("/api/tools/")
+    tools = list_response.json()
+    imported_tool = next((t for t in tools if t["name"] == "Export React Tool"), None)
+
+    assert imported_tool is not None
+    assert imported_tool["tool_type"] == "react"
+    assert imported_tool["description"] == "React export test"
+    assert set(imported_tool["tags"]) == {"react", "export-test"}
+
+
+def test_mixed_tools_export_import(session: Session, client: TestClient):
+    """HTML と React の混在ツールをエクスポート・インポートできることをテスト。"""
+    # HTML ツールを作成
+    html_data = {
+        "name": "HTML Export Tool",
+        "html_content": "<p>HTML</p>",
+        "tool_type": "html",
+    }
+    html_response = client.post("/api/tools/", json=html_data)
+    html_id = html_response.json()["id"]
+
+    # React ツールを作成
+    jsx_data = {
+        "name": "React Export Tool",
+        "html_content": "import React from 'react';\nconst App = () => <div>React</div>;",
+    }
+    react_response = client.post("/api/tools/", json=jsx_data)
+    react_id = react_response.json()["id"]
+
+    # 両方をエクスポート
+    export_response = client.post("/api/tools/export", json={"tool_ids": [html_id, react_id]})
+    assert export_response.status_code == 200
+
+    exported_data = msgpack.unpackb(export_response.content, raw=False)
+    assert len(exported_data) == 2
+
+    # tool_type が正しく含まれているか確認
+    html_tool = next(t for t in exported_data if t["name"] == "HTML Export Tool")
+    react_tool = next(t for t in exported_data if t["name"] == "React Export Tool")
+
+    assert html_tool["tool_type"] == "html"
+    assert react_tool["tool_type"] == "react"
+
+    # DB をクリア
+    client.delete(f"/api/tools/{html_id}")
+    client.delete(f"/api/tools/{react_id}")
+
+    # インポート
+    import_response = client.post(
+        "/api/tools/import",
+        files={"file": ("tools.pack", export_response.content, "application/octet-stream")},
+    )
+    assert import_response.status_code == 200
+    assert import_response.json()["imported_count"] == 2
+
+    # インポート後のツールを確認
+    list_response = client.get("/api/tools/")
+    tools = list_response.json()
+
+    html_imported = next((t for t in tools if t["name"] == "HTML Export Tool"), None)
+    react_imported = next((t for t in tools if t["name"] == "React Export Tool"), None)
+
+    assert html_imported is not None
+    assert html_imported["tool_type"] == "html"
+    assert react_imported is not None
+    assert react_imported["tool_type"] == "react"

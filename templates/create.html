@@ -19,8 +19,17 @@
             <input type="text" id="tags" name="tags" placeholder="計算, テキスト, ユーティリティ">
             <small>カンマ区切りで入力</small>
 
-            <label for="html_content">HTMLコンテンツ</label>
-            <textarea id="html_content" name="html_content" rows="10" placeholder="<!DOCTYPE html>..." required></textarea>
+            <label for="tool_type">ツールタイプ</label>
+            <select id="tool_type" name="tool_type">
+                <option value="">自動検出</option>
+                <option value="html">HTML</option>
+                <option value="react">React (JSX)</option>
+            </select>
+            <small>「自動検出」を選択すると、コードを解析して適切なタイプを判定します</small>
+
+            <label for="html_content">コード</label>
+            <textarea id="html_content" name="html_content" rows="15" placeholder="HTMLコードまたはJSXコードを貼り付け..." required></textarea>
+            <small>💡 Claude Artifacts や Gemini Canvas で生成されたコードをそのまま貼り付けできます</small>
 
             <button type="submit" id="submit-btn">作成</button>
         </form>
@@ -48,11 +57,13 @@
             const messageDiv = document.getElementById('message');
 
             // フォームデータの収集
+            const toolTypeValue = document.getElementById('tool_type').value;
             const formData = {
                 name: document.getElementById('name').value,
                 description: document.getElementById('description').value,
                 tags: document.getElementById('tags').value,
-                html_content: document.getElementById('html_content').value
+                html_content: document.getElementById('html_content').value,
+                tool_type: toolTypeValue || null  // 空文字列の場合は null（自動検出）
             };
 
             // クライアント側バリデーション
@@ -81,7 +92,30 @@
                     const strong = document.createElement('strong');
                     strong.textContent = newTool.name;
                     messageDiv.appendChild(strong);
-                    messageDiv.appendChild(document.createTextNode('」を作成しました。'));
+                    messageDiv.appendChild(document.createTextNode('」を'));
+
+                    // 自動検出結果のフィードバック表示
+                    const wasAutoDetected = !validation.data.tool_type || validation.data.tool_type === '';
+                    if (wasAutoDetected && newTool.tool_type) {
+                        const typeBadge = document.createElement('code');
+                        typeBadge.textContent = newTool.tool_type === 'react' ? 'React' : 'HTML';
+                        typeBadge.style.padding = '0.25rem 0.5rem';
+                        typeBadge.style.borderRadius = '0.25rem';
+                        typeBadge.style.fontSize = '0.875rem';
+                        if (newTool.tool_type === 'react') {
+                            typeBadge.style.backgroundColor = '#61DAFB';
+                            typeBadge.style.color = '#000';
+                            typeBadge.setAttribute('aria-label', 'ツールタイプ: React');
+                        } else {
+                            typeBadge.style.backgroundColor = '#E34C26';
+                            typeBadge.style.color = '#fff';
+                            typeBadge.setAttribute('aria-label', 'ツールタイプ: HTML');
+                        }
+                        messageDiv.appendChild(typeBadge);
+                        messageDiv.appendChild(document.createTextNode('として'));
+                    }
+
+                    messageDiv.appendChild(document.createTextNode('作成しました。'));
                     const viewLink = document.createElement('a');
                     viewLink.href = '/tools/view/' + newTool.id;
                     viewLink.textContent = '表示';

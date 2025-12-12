@@ -8,6 +8,9 @@ from sqlalchemy.sql.elements import ColumnElement
 from sqlmodel import Session, select, text
 
 from html_tool_manager.models import Tool, ToolCreate
+from html_tool_manager.models.tool import ToolType
+from html_tool_manager.templates.react_template import generate_react_html
+from html_tool_manager.utils.code_detector import detect_tool_type
 
 
 class SortOrder(str, Enum):
@@ -45,13 +48,23 @@ class ToolRepository:
             # この関数ではhtml_contentが必須であると仮定
             raise ValueError("'html_content' is required.")
 
+        # 自動検出（ユーザーが明示的に指定していない場合）
+        if tool_data.tool_type is None:
+            tool_data.tool_type = detect_tool_type(tool_data.html_content)
+
+        # React タイプの場合はテンプレートでラップ
+        if tool_data.tool_type == ToolType.REACT:
+            final_html = generate_react_html(tool_data.html_content)
+        else:
+            final_html = tool_data.html_content
+
         # 一意のディレクトリとファイルパスを生成
         tool_dir = f"static/tools/{uuid.uuid4()}"
         os.makedirs(tool_dir, exist_ok=True)
         final_filepath = f"{tool_dir}/index.html"
 
-        with open(final_filepath, "w") as f:
-            f.write(tool_data.html_content)
+        with open(final_filepath, "w", encoding="utf-8") as f:
+            f.write(final_html)
 
         # DBに保存するモデルのfilepathを更新
         tool_data.filepath = final_filepath

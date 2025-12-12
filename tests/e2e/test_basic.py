@@ -40,8 +40,8 @@ class TestToolCRUD:
         # Submit
         test_page.click("#submit-btn")
 
-        # Wait for success message
-        expect(test_page.locator("#message")).to_contain_text("を作成しました")
+        # Wait for success message (includes auto-detected type)
+        expect(test_page.locator("#message")).to_contain_text("作成しました")
 
         # Navigate back to home
         test_page.click("#message a[href='/']")

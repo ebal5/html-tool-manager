@@ -5,6 +5,8 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.middleware.base import RequestResponseEndpoint
+from starlette.responses import Response
 
 from html_tool_manager.api.tools import router as tools_router
 from html_tool_manager.core.db import create_db_and_tables
@@ -21,6 +23,33 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 app = FastAPI(lifespan=lifespan)
+
+
+# セキュリティヘッダーのミドルウェア
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next: RequestResponseEndpoint) -> Response:
+    """Add security headers to all responses."""
+    response = await call_next(request)
+
+    # 共通セキュリティヘッダー
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+
+    # ツール用HTMLにはCSPを設定しない（iframe sandboxで保護）
+    # 理由：ツールごとに使用するCDNが異なり、完全なリストを作成できないため
+    if not request.url.path.startswith("/static/tools/"):
+        # アプリケーション本体には完全なCSP
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' https://unpkg.com https://cdn.tailwindcss.com 'unsafe-inline' 'unsafe-eval'; "
+            "style-src 'self' https://cdn.jsdelivr.net https://cdn.tailwindcss.com 'unsafe-inline'; "
+            "img-src 'self' data:; "
+            "frame-ancestors 'none'; "
+            "base-uri 'self';"
+        )
+
+    return response
+
 
 # 静的ファイルの提供
 app.mount("/static", StaticFiles(directory="static"), name="static")
