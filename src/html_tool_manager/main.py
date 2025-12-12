@@ -1,15 +1,17 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from typing import Any
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from sqlmodel import text
 from starlette.middleware.base import RequestResponseEndpoint
 from starlette.responses import Response
 
 from html_tool_manager.api.tools import router as tools_router
-from html_tool_manager.core.db import create_db_and_tables
+from html_tool_manager.core.db import create_db_and_tables, engine
 
 
 @asynccontextmanager
@@ -82,3 +84,31 @@ async def edit_tool_page(request: Request, tool_id: int) -> HTMLResponse:
 async def view_tool_page(request: Request, tool_id: int) -> HTMLResponse:
     """Render the tool viewer page."""
     return templates.TemplateResponse("tool_viewer.html", {"request": request, "tool_id": tool_id})
+
+
+@app.get("/health", response_class=JSONResponse)
+async def health_check() -> dict[str, Any]:
+    """Health check endpoint for monitoring and container orchestration.
+
+    Returns:
+        JSON response with health status and component checks.
+
+    """
+    health_status: dict[str, Any] = {
+        "status": "healthy",
+        "components": {
+            "database": "unknown",
+        },
+    }
+
+    # Database health check
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        health_status["components"]["database"] = "healthy"
+    except Exception as e:
+        health_status["status"] = "unhealthy"
+        health_status["components"]["database"] = f"unhealthy: {e!s}"
+
+    status_code = 200 if health_status["status"] == "healthy" else 503
+    return JSONResponse(content=health_status, status_code=status_code)
