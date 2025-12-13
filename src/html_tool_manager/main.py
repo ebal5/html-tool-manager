@@ -44,6 +44,8 @@ async def add_security_headers(request: Request, call_next: RequestResponseEndpo
             "script-src 'self' https://unpkg.com https://cdn.jsdelivr.net https://cdn.tailwindcss.com 'unsafe-inline' 'unsafe-eval';"
             "style-src 'self' https://cdn.jsdelivr.net https://cdn.tailwindcss.com 'unsafe-inline'; "
             "img-src 'self' data:; "
+            "connect-src 'self' https://cdn.jsdelivr.net; "
+            "worker-src 'self' blob:; "
             "frame-ancestors 'none'; "
             "base-uri 'self';"
         )

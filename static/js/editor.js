@@ -52,8 +52,6 @@ function initializeAceEditor(textareaId, editorId) {
     showLineNumbers: true,
     showGutter: true,
     highlightActiveLine: true,
-    enableBasicAutocompletion: true,
-    enableLiveAutocompletion: false,
     showPrintMargin: false,
     tabSize: 2,
     useSoftTabs: true,
