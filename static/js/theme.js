@@ -157,26 +157,15 @@ function cycleTheme() {
  * システムのカラースキーム変更を監視
  */
 function watchSystemTheme() {
-  if (!window.matchMedia) return;
-
   const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
   // システム設定が変更された時、autoモードの場合のみ更新
-  const handleChange = () => {
+  mediaQuery.addEventListener('change', () => {
     const currentPreference = getSavedTheme();
     if (currentPreference === THEMES.AUTO) {
-      const actualTheme = getSystemTheme();
-      applyTheme(actualTheme);
+      applyTheme(getSystemTheme());
     }
-  };
-
-  // Modern browsers
-  if (mediaQuery.addEventListener) {
-    mediaQuery.addEventListener('change', handleChange);
-  } else {
-    // Legacy browsers
-    mediaQuery.addListener(handleChange);
-  }
+  });
 }
 
 /**
