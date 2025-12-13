@@ -87,7 +87,7 @@ async def view_tool_page(request: Request, tool_id: int) -> HTMLResponse:
 
 
 @app.get("/health", response_class=JSONResponse)
-async def health_check() -> dict[str, Any]:
+async def health_check() -> JSONResponse:
     """Health check endpoint for monitoring and container orchestration.
 
     Returns:
@@ -106,9 +106,9 @@ async def health_check() -> dict[str, Any]:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
         health_status["components"]["database"] = "healthy"
-    except Exception as e:
+    except Exception:
         health_status["status"] = "unhealthy"
-        health_status["components"]["database"] = f"unhealthy: {e!s}"
+        health_status["components"]["database"] = "unhealthy"
 
     status_code = 200 if health_status["status"] == "healthy" else 503
     return JSONResponse(content=health_status, status_code=status_code)
