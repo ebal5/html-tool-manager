@@ -28,6 +28,7 @@ def _escape_fts5_term(term: str) -> str:
 
     FTS5では特殊文字をダブルクォートで囲むことでリテラルとして扱える。
     ダブルクォート自体は "" でエスケープする。
+    制御文字（特にnull byte）はSQLiteエラーの原因となるため除去する。
 
     Args:
         term: The search term to escape.
@@ -39,6 +40,10 @@ def _escape_fts5_term(term: str) -> str:
     # 空文字列や空白のみの場合はスキップ
     if not term or not term.strip():
         return ""
+
+    # 制御文字を除去（null byte等がSQLiteエラーの原因となる）
+    # \t (0x09), \n (0x0a) は検索クエリでは不要なので除去
+    term = "".join(c for c in term if ord(c) >= 0x20 or c in "")
 
     # 既に末尾が * の場合は除去（後で追加するため）
     term = term.rstrip("*")
