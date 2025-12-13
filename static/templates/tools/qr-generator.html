@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QRコード生成</title>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .panel {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        textarea {
+            width: 100%;
+            height: 100px;
+            font-family: inherit;
+            font-size: 14px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 12px;
+            resize: vertical;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+        .options {
+            display: flex;
+            gap: 15px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+        select, input[type="number"], input[type="color"] {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        input[type="number"] {
+            width: 80px;
+        }
+        input[type="color"] {
+            width: 40px;
+            height: 32px;
+            padding: 2px;
+            cursor: pointer;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 14px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background: #545b62;
+        }
+        .qr-output {
+            text-align: center;
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        #qrCanvas {
+            max-width: 100%;
+            height: auto;
+        }
+        .empty-state {
+            color: #666;
+            padding: 40px;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            justify-content: center;
+        }
+        .message {
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 15px;
+            text-align: center;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            color: #dc3545;
+        }
+        .char-count {
+            text-align: right;
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>QRコード生成</h1>
+
+    <div class="panel">
+        <textarea id="input" placeholder="QRコードにするテキストやURLを入力..." oninput="updateCharCount()"></textarea>
+        <div class="char-count"><span id="charCount">0</span> / 2953 文字</div>
+
+        <div class="options">
+            <label>
+                サイズ:
+                <input type="number" id="size" value="200" min="100" max="1000" step="50">
+            </label>
+            <label>
+                誤り訂正:
+                <select id="errorLevel">
+                    <option value="L">低 (7%)</option>
+                    <option value="M" selected>中 (15%)</option>
+                    <option value="Q">高 (25%)</option>
+                    <option value="H">最高 (30%)</option>
+                </select>
+            </label>
+            <label>
+                色:
+                <input type="color" id="darkColor" value="#000000">
+            </label>
+            <label>
+                背景:
+                <input type="color" id="lightColor" value="#ffffff">
+            </label>
+        </div>
+
+        <button class="btn-primary" onclick="generateQR()">QRコード生成</button>
+
+        <div class="qr-output" id="qrOutput">
+            <div class="empty-state">テキストを入力してQRコードを生成してください</div>
+        </div>
+
+        <div class="controls" id="qrControls" style="display: none;">
+            <button class="btn-secondary" onclick="downloadQR('png')">PNG ダウンロード</button>
+            <button class="btn-secondary" onclick="downloadQR('svg')">SVG ダウンロード</button>
+        </div>
+
+        <div id="message" class="message" style="display: none;"></div>
+    </div>
+
+    <script>
+        let currentCanvas = null;
+
+        function updateCharCount() {
+            const count = document.getElementById('input').value.length;
+            document.getElementById('charCount').textContent = count;
+        }
+
+        function showMessage(text, isError) {
+            const msg = document.getElementById('message');
+            msg.textContent = text;
+            msg.className = 'message ' + (isError ? 'error' : 'success');
+            msg.style.display = 'block';
+            setTimeout(() => {
+                msg.style.display = 'none';
+            }, 3000);
+        }
+
+        async function generateQR() {
+            const text = document.getElementById('input').value.trim();
+            if (!text) {
+                showMessage('テキストを入力してください', true);
+                return;
+            }
+
+            const size = parseInt(document.getElementById('size').value, 10);
+            const errorLevel = document.getElementById('errorLevel').value;
+            const darkColor = document.getElementById('darkColor').value;
+            const lightColor = document.getElementById('lightColor').value;
+
+            const output = document.getElementById('qrOutput');
+            const controls = document.getElementById('qrControls');
+
+            try {
+                // QRコードをCanvasに生成
+                const canvas = document.createElement('canvas');
+                await QRCode.toCanvas(canvas, text, {
+                    width: size,
+                    margin: 2,
+                    errorCorrectionLevel: errorLevel,
+                    color: {
+                        dark: darkColor,
+                        light: lightColor
+                    }
+                });
+
+                output.innerHTML = '';
+                output.appendChild(canvas);
+                canvas.id = 'qrCanvas';
+                currentCanvas = canvas;
+
+                controls.style.display = 'flex';
+                showMessage('QRコードを生成しました', false);
+            } catch (error) {
+                showMessage('QRコードの生成に失敗しました: ' + error.message, true);
+            }
+        }
+
+        function downloadQR(format) {
+            if (!currentCanvas) {
+                showMessage('まずQRコードを生成してください', true);
+                return;
+            }
+
+            const text = document.getElementById('input').value.trim();
+
+            if (format === 'png') {
+                const link = document.createElement('a');
+                link.download = 'qrcode.png';
+                link.href = currentCanvas.toDataURL('image/png');
+                link.click();
+                showMessage('PNGをダウンロードしました', false);
+            } else if (format === 'svg') {
+                const size = parseInt(document.getElementById('size').value, 10);
+                const errorLevel = document.getElementById('errorLevel').value;
+                const darkColor = document.getElementById('darkColor').value;
+                const lightColor = document.getElementById('lightColor').value;
+
+                QRCode.toString(text, {
+                    type: 'svg',
+                    width: size,
+                    margin: 2,
+                    errorCorrectionLevel: errorLevel,
+                    color: {
+                        dark: darkColor,
+                        light: lightColor
+                    }
+                }, (err, svgString) => {
+                    if (err) {
+                        showMessage('SVGの生成に失敗しました', true);
+                        return;
+                    }
+
+                    const blob = new Blob([svgString], { type: 'image/svg+xml' });
+                    const link = document.createElement('a');
+                    link.download = 'qrcode.svg';
+                    link.href = URL.createObjectURL(blob);
+                    link.click();
+                    URL.revokeObjectURL(link.href);
+                    showMessage('SVGをダウンロードしました', false);
+                });
+            }
+        }
+
+        // オプション変更時に自動再生成
+        ['size', 'errorLevel', 'darkColor', 'lightColor'].forEach(id => {
+            document.getElementById(id).addEventListener('change', () => {
+                if (document.getElementById('input').value.trim()) {
+                    generateQR();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

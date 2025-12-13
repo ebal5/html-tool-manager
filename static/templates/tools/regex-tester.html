@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>正規表現テスター</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .panel {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .panel h2 {
+            font-size: 1rem;
+            color: #666;
+            margin: 0 0 10px 0;
+        }
+        .regex-input {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .regex-wrapper {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 0 10px;
+        }
+        .regex-wrapper span {
+            color: #999;
+            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+        }
+        .regex-wrapper input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            padding: 10px;
+            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+            font-size: 14px;
+        }
+        .regex-wrapper input:focus {
+            outline: none;
+        }
+        .flags {
+            display: flex;
+            gap: 8px;
+        }
+        .flag-btn {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .flag-btn.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        .flag-btn:hover:not(.active) {
+            background: #e9ecef;
+        }
+        textarea {
+            width: 100%;
+            height: 150px;
+            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+            font-size: 14px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 12px;
+            resize: vertical;
+            line-height: 1.5;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+        .result-text {
+            min-height: 150px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            padding: 12px;
+            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .match {
+            background: #ffeb3b;
+            border-radius: 2px;
+        }
+        .match-group {
+            background: #81d4fa;
+            border-radius: 2px;
+        }
+        .error {
+            color: #dc3545;
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 10px;
+        }
+        .stats {
+            display: flex;
+            gap: 20px;
+            margin-top: 15px;
+            font-size: 14px;
+            color: #666;
+        }
+        .matches-list {
+            margin-top: 15px;
+        }
+        .matches-list h3 {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        .match-item {
+            display: flex;
+            gap: 10px;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            margin-bottom: 5px;
+            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+            font-size: 13px;
+        }
+        .match-index {
+            color: #666;
+            min-width: 40px;
+        }
+        .match-value {
+            flex: 1;
+            color: #333;
+        }
+        .match-position {
+            color: #999;
+            font-size: 12px;
+        }
+        .empty-state {
+            color: #666;
+            text-align: center;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>正規表現テスター</h1>
+
+    <div class="panel">
+        <h2>正規表現</h2>
+        <div class="regex-input">
+            <div class="regex-wrapper">
+                <span>/</span>
+                <input type="text" id="pattern" placeholder="正規表現パターン" oninput="testRegex()">
+                <span>/</span>
+            </div>
+            <div class="flags">
+                <button class="flag-btn active" data-flag="g" onclick="toggleFlag(this)" title="Global">g</button>
+                <button class="flag-btn" data-flag="i" onclick="toggleFlag(this)" title="Case insensitive">i</button>
+                <button class="flag-btn" data-flag="m" onclick="toggleFlag(this)" title="Multiline">m</button>
+                <button class="flag-btn" data-flag="s" onclick="toggleFlag(this)" title="Dotall">s</button>
+            </div>
+        </div>
+        <div id="regexError" class="error" style="display: none;"></div>
+    </div>
+
+    <div class="panel">
+        <h2>テスト文字列</h2>
+        <textarea id="testString" placeholder="テストする文字列を入力..." oninput="testRegex()"></textarea>
+    </div>
+
+    <div class="panel">
+        <h2>マッチ結果</h2>
+        <div class="result-text" id="resultText">
+            <div class="empty-state">正規表現とテスト文字列を入力してください</div>
+        </div>
+        <div class="stats" id="stats" style="display: none;">
+            <span>マッチ数: <strong id="matchCount">0</strong></span>
+        </div>
+    </div>
+
+    <div class="panel">
+        <h2>マッチ一覧</h2>
+        <div class="matches-list" id="matchesList">
+            <div class="empty-state">マッチがありません</div>
+        </div>
+    </div>
+
+    <script>
+        function getFlags() {
+            return Array.from(document.querySelectorAll('.flag-btn.active'))
+                .map(btn => btn.dataset.flag)
+                .join('');
+        }
+
+        function toggleFlag(button) {
+            button.classList.toggle('active');
+            testRegex();
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function testRegex() {
+            const pattern = document.getElementById('pattern').value;
+            const testString = document.getElementById('testString').value;
+            const resultText = document.getElementById('resultText');
+            const matchesList = document.getElementById('matchesList');
+            const stats = document.getElementById('stats');
+            const errorDiv = document.getElementById('regexError');
+
+            // エラーをクリア
+            errorDiv.style.display = 'none';
+
+            if (!pattern || !testString) {
+                resultText.innerHTML = '<div class="empty-state">正規表現とテスト文字列を入力してください</div>';
+                matchesList.innerHTML = '<div class="empty-state">マッチがありません</div>';
+                stats.style.display = 'none';
+                return;
+            }
+
+            try {
+                const flags = getFlags();
+                const regex = new RegExp(pattern, flags);
+                const matches = [];
+                let match;
+                let lastIndex = 0;
+                let resultHtml = '';
+
+                if (flags.includes('g')) {
+                    // グローバルマッチ
+                    while ((match = regex.exec(testString)) !== null) {
+                        // マッチ前のテキスト
+                        resultHtml += escapeHtml(testString.slice(lastIndex, match.index));
+                        // マッチしたテキスト
+                        resultHtml += `<span class="match">${escapeHtml(match[0])}</span>`;
+                        lastIndex = match.index + match[0].length;
+
+                        matches.push({
+                            value: match[0],
+                            index: match.index,
+                            groups: match.slice(1)
+                        });
+
+                        // 無限ループ防止
+                        if (match.index === regex.lastIndex) {
+                            regex.lastIndex++;
+                        }
+                    }
+                    resultHtml += escapeHtml(testString.slice(lastIndex));
+                } else {
+                    // 単一マッチ
+                    match = regex.exec(testString);
+                    if (match) {
+                        resultHtml = escapeHtml(testString.slice(0, match.index));
+                        resultHtml += `<span class="match">${escapeHtml(match[0])}</span>`;
+                        resultHtml += escapeHtml(testString.slice(match.index + match[0].length));
+
+                        matches.push({
+                            value: match[0],
+                            index: match.index,
+                            groups: match.slice(1)
+                        });
+                    } else {
+                        resultHtml = escapeHtml(testString);
+                    }
+                }
+
+                resultText.innerHTML = resultHtml || escapeHtml(testString);
+
+                // マッチ数
+                document.getElementById('matchCount').textContent = matches.length;
+                stats.style.display = matches.length > 0 ? 'flex' : 'none';
+
+                // マッチ一覧
+                if (matches.length > 0) {
+                    matchesList.innerHTML = matches.map((m, i) => {
+                        let html = `
+                            <div class="match-item">
+                                <span class="match-index">#${i + 1}</span>
+                                <span class="match-value">${escapeHtml(m.value)}</span>
+                                <span class="match-position">位置: ${m.index}</span>
+                            </div>
+                        `;
+                        // グループがある場合
+                        if (m.groups.length > 0) {
+                            m.groups.forEach((g, gi) => {
+                                if (g !== undefined) {
+                                    html += `
+                                        <div class="match-item" style="margin-left: 20px; background: #e3f2fd;">
+                                            <span class="match-index">$${gi + 1}</span>
+                                            <span class="match-value">${escapeHtml(g)}</span>
+                                        </div>
+                                    `;
+                                }
+                            });
+                        }
+                        return html;
+                    }).join('');
+                } else {
+                    matchesList.innerHTML = '<div class="empty-state">マッチがありません</div>';
+                }
+
+            } catch (e) {
+                errorDiv.textContent = '正規表現エラー: ' + e.message;
+                errorDiv.style.display = 'block';
+                resultText.innerHTML = escapeHtml(testString);
+                matchesList.innerHTML = '<div class="empty-state">マッチがありません</div>';
+                stats.style.display = 'none';
+            }
+        }
+
+        // サンプルデータ
+        document.getElementById('pattern').value = '\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}\\b';
+        document.getElementById('testString').value = 'お問い合わせは contact@example.com または support@test.co.jp までお願いします。';
+        testRegex();
+    </script>
+</body>
+</html>

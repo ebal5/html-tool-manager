@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>マークダウンプレビュー</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+            height: 100vh;
+        }
+        h1 {
+            color: #333;
+            margin: 0 0 20px 0;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            height: calc(100vh - 100px);
+        }
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+        }
+        .panel {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .panel-header {
+            padding: 12px 15px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #eee;
+            font-weight: bold;
+            color: #666;
+            font-size: 0.9rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .panel-content {
+            flex: 1;
+            overflow: auto;
+        }
+        textarea {
+            width: 100%;
+            height: 100%;
+            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+            font-size: 14px;
+            border: none;
+            padding: 15px;
+            resize: none;
+            line-height: 1.6;
+        }
+        textarea:focus {
+            outline: none;
+        }
+        .preview {
+            padding: 15px;
+            line-height: 1.6;
+        }
+        .preview h1, .preview h2, .preview h3, .preview h4, .preview h5, .preview h6 {
+            margin-top: 24px;
+            margin-bottom: 16px;
+            font-weight: 600;
+            line-height: 1.25;
+        }
+        .preview h1 { font-size: 2em; border-bottom: 1px solid #eee; padding-bottom: 0.3em; }
+        .preview h2 { font-size: 1.5em; border-bottom: 1px solid #eee; padding-bottom: 0.3em; }
+        .preview h3 { font-size: 1.25em; }
+        .preview h4 { font-size: 1em; }
+        .preview p {
+            margin-top: 0;
+            margin-bottom: 16px;
+        }
+        .preview code {
+            background: #f6f8fa;
+            padding: 0.2em 0.4em;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+            font-size: 85%;
+        }
+        .preview pre {
+            background: #f6f8fa;
+            padding: 16px;
+            border-radius: 6px;
+            overflow: auto;
+        }
+        .preview pre code {
+            background: none;
+            padding: 0;
+        }
+        .preview blockquote {
+            margin: 0;
+            padding: 0 1em;
+            color: #6a737d;
+            border-left: 0.25em solid #dfe2e5;
+        }
+        .preview ul, .preview ol {
+            padding-left: 2em;
+            margin-top: 0;
+            margin-bottom: 16px;
+        }
+        .preview li + li {
+            margin-top: 0.25em;
+        }
+        .preview table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-bottom: 16px;
+        }
+        .preview th, .preview td {
+            padding: 6px 13px;
+            border: 1px solid #dfe2e5;
+        }
+        .preview th {
+            background: #f6f8fa;
+            font-weight: 600;
+        }
+        .preview tr:nth-child(2n) {
+            background: #f6f8fa;
+        }
+        .preview hr {
+            height: 0.25em;
+            padding: 0;
+            margin: 24px 0;
+            background-color: #e1e4e8;
+            border: 0;
+        }
+        .preview a {
+            color: #0366d6;
+            text-decoration: none;
+        }
+        .preview a:hover {
+            text-decoration: underline;
+        }
+        .preview img {
+            max-width: 100%;
+            height: auto;
+        }
+        .btn-copy {
+            padding: 4px 10px;
+            font-size: 12px;
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .btn-copy:hover {
+            background: #545b62;
+        }
+        .char-info {
+            font-weight: normal;
+            font-size: 12px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <h1>マークダウンプレビュー</h1>
+
+    <div class="container">
+        <div class="panel">
+            <div class="panel-header">
+                <span>Markdown</span>
+                <span class="char-info"><span id="charCount">0</span> 文字</span>
+            </div>
+            <div class="panel-content">
+                <textarea id="input" placeholder="Markdownを入力..." oninput="updatePreview()"></textarea>
+            </div>
+        </div>
+        <div class="panel">
+            <div class="panel-header">
+                <span>プレビュー</span>
+                <button class="btn-copy" onclick="copyHtml()">HTMLをコピー</button>
+            </div>
+            <div class="panel-content">
+                <div class="preview" id="preview"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // marked.jsの設定
+        marked.setOptions({
+            breaks: true,
+            gfm: true
+        });
+
+        function updatePreview() {
+            const input = document.getElementById('input').value;
+            const preview = document.getElementById('preview');
+
+            // 文字数更新
+            document.getElementById('charCount').textContent = input.length;
+
+            // Markdownをレンダリング
+            try {
+                preview.innerHTML = marked.parse(input);
+            } catch (e) {
+                preview.innerHTML = '<p style="color: red;">パースエラー: ' + e.message + '</p>';
+            }
+        }
+
+        function copyHtml() {
+            const html = document.getElementById('preview').innerHTML;
+            navigator.clipboard.writeText(html).then(() => {
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = 'コピーしました!';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                }, 1500);
+            });
+        }
+
+        // サンプルMarkdown
+        const sampleMarkdown = `# マークダウンプレビュー
+
+## 基本的な書式
+
+**太字**、*イタリック*、~~取り消し線~~
+
+## リスト
+
+- 項目1
+- 項目2
+  - ネストした項目
+- 項目3
+
+1. 番号付きリスト
+2. 番号付きリスト
+
+## コード
+
+インラインコード: \`console.log('Hello')\`
+
+\`\`\`javascript
+function greet(name) {
+    return \`Hello, \${name}!\`;
+}
+\`\`\`
+
+## 引用
+
+> これは引用です。
+> 複数行にまたがることもできます。
+
+## リンクと画像
+
+[リンクテキスト](https://example.com)
+
+## テーブル
+
+| 名前 | 年齢 | 職業 |
+|------|------|------|
+| 田中 | 25 | エンジニア |
+| 佐藤 | 30 | デザイナー |
+
+---
+
+水平線の上のテキスト
+`;
+
+        document.getElementById('input').value = sampleMarkdown;
+        updatePreview();
+    </script>
+</body>
+</html>
