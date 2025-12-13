@@ -3,6 +3,12 @@
 {% block title %}Create New Tool - HTML Tool Manager{% endblock %}
 
 {% block content %}
+    <!-- Ace Editor CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/ace-builds@1.32.6/src-min-noconflict/ace.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ace-builds@1.32.6/src-min-noconflict/mode-html.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ace-builds@1.32.6/src-min-noconflict/mode-jsx.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ace-builds@1.32.6/src-min-noconflict/theme-monokai.min.js"></script>
+
     <article>
         <header>
             <h2>新規ツール作成</h2>
@@ -37,7 +43,28 @@
     </article>
 
     <script src="/static/js/validation.js"></script>
+    <script src="/static/js/editor.js"></script>
     <script>
+        // Ace Editorを初期化
+        let codeEditor = null;
+        function initEditor(retries = 0) {
+            // Ace Editorがまだ読み込まれていない場合はリトライ
+            if (typeof ace === 'undefined') {
+                if (retries < ACE_LOAD_MAX_RETRIES) {
+                    setTimeout(() => initEditor(retries + 1), ACE_LOAD_RETRY_INTERVAL_MS);
+                } else {
+                    console.error('Ace Editor failed to load after maximum retries');
+                }
+                return;
+            }
+            codeEditor = initializeAceEditor('html_content', 'code-editor');
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initEditor);
+        } else {
+            initEditor();
+        }
+
         // エラーメッセージを安全に表示するヘルパー関数
         function showError(messageDiv, errorText) {
             messageDiv.innerHTML = '';
@@ -49,6 +76,11 @@
         setupRealtimeValidation(document.getElementById('name'), validateName);
         setupRealtimeValidation(document.getElementById('description'), validateDescription);
         setupRealtimeValidation(document.getElementById('tags'), validateTags);
+
+        // ツールタイプ変更時にエディタモードを切り替え
+        document.getElementById('tool_type').addEventListener('change', function(e) {
+            setEditorMode(codeEditor, e.target.value);
+        });
 
         // Form submission logic
         document.getElementById('create-tool-form').addEventListener('submit', async function(event) {
