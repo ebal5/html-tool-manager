@@ -96,3 +96,35 @@ def test_tag_suggest_case_insensitive(session: Session, client: TestClient) -> N
 
     # Clean up
     client.delete(f"/api/tools/{created_tool['id']}")
+
+
+def test_tag_suggest_escapes_sql_wildcards(session: Session, client: TestClient) -> None:
+    """Test that SQL wildcard characters are properly escaped."""
+    # Create a tool with tags containing SQL wildcards
+    tool_data = {
+        "name": "Wildcard Test Tool",
+        "description": "A test tool",
+        "tags": ["100%", "__init__", "a%b", "normal"],
+        "html_content": "<html><body>Test</body></html>",
+    }
+    create_response = client.post("/api/tools/", json=tool_data)
+    assert create_response.status_code == 201
+    created_tool = create_response.json()
+
+    # Query with % should match literal % only, not as wildcard
+    response = client.get("/api/tools/tags/suggest?q=%25")  # URL encoded %
+    assert response.status_code == 200
+    tags = response.json()
+    assert "100%" in tags
+    assert "a%b" in tags
+    assert "normal" not in tags  # Should not match (no % in tag)
+
+    # Query with _ should match literal _ only, not as wildcard
+    response = client.get("/api/tools/tags/suggest?q=_")
+    assert response.status_code == 200
+    tags = response.json()
+    assert "__init__" in tags
+    assert "normal" not in tags  # Should not match (no _ in tag)
+
+    # Clean up
+    client.delete(f"/api/tools/{created_tool['id']}")

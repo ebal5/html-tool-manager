@@ -170,36 +170,47 @@ class ToolRepository:
         self.session.commit()
         return tool
 
-    def get_tag_suggestions(self, query: str = "", limit: int = 20, max_query_length: int = 50) -> List[str]:
+    @staticmethod
+    def _escape_like_pattern(value: str) -> str:
+        r"""Escape special characters for SQL LIKE pattern.
+
+        SQLAlchemyのcontains/startswith/endswithのautoescape実装に準拠。
+        エスケープ文字として'\'を使用。
+
+        Args:
+            value: The string to escape.
+
+        Returns:
+            Escaped string safe for use in LIKE pattern.
+
+        """
+        # エスケープ文字自体を先にエスケープし、その後ワイルドカード文字をエスケープ
+        return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+    def get_tag_suggestions(self, query: str = "", limit: int = 20) -> List[str]:
         """Get tag suggestions based on existing tags.
 
         Args:
             query: Search query to filter tags (case-insensitive partial match).
             limit: Maximum number of suggestions to return.
-            max_query_length: Maximum allowed query length for validation.
 
         Returns:
             List of unique tags matching the query, sorted by frequency (most common first).
 
-        Raises:
-            ValueError: If query exceeds max_query_length.
-
         """
-        # リポジトリレベルでのバリデーション（APIレイヤー以外からの呼び出しに対応）
-        if len(query) > max_query_length:
-            raise ValueError(f"Query must not exceed {max_query_length} characters")
-
         # SQLiteのjson_each関数を使用してタグを集計
         # これにより全ツールをメモリに読み込まずにDB側で処理できる
+        # ESCAPE句でワイルドカード文字のエスケープを有効化
         sql = text("""
             SELECT tag.value as tag_name, COUNT(*) as tag_count
             FROM tool, json_each(tool.tags) as tag
-            WHERE LOWER(tag.value) LIKE LOWER(:pattern)
+            WHERE LOWER(tag.value) LIKE LOWER(:pattern) ESCAPE '\\'
             GROUP BY tag.value
             ORDER BY tag_count DESC, tag_name ASC
             LIMIT :limit
         """)
 
-        pattern = f"%{query}%" if query else "%"
+        escaped_query = self._escape_like_pattern(query)
+        pattern = f"%{escaped_query}%" if query else "%"
         result = self.session.execute(sql, {"pattern": pattern, "limit": limit})
         return [row[0] for row in result.fetchall()]
