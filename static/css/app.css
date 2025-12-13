@@ -1,0 +1,9 @@
+/**
+ * アプリケーション共通スタイル
+ */
+
+/* テーマ切り替えボタン */
+#theme-toggle {
+  padding: 0.5rem 0.75rem;
+  min-width: auto;
+}
