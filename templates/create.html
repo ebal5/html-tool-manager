@@ -44,6 +44,7 @@
 
     <script src="/static/js/validation.js"></script>
     <script src="/static/js/editor.js"></script>
+    <script src="/static/js/tag-autocomplete.js"></script>
     <script>
         // Ace Editorを初期化
         let codeEditor = null;
@@ -64,6 +65,9 @@
         } else {
             initEditor();
         }
+
+        // タグオートコンプリートを設定
+        setupTagAutocomplete(document.getElementById('tags'), 'tag-suggestions');
 
         // エラーメッセージを安全に表示するヘルパー関数
         function showError(messageDiv, errorText) {

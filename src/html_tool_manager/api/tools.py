@@ -45,6 +45,13 @@ def read_tools(
     return [ToolRead.model_validate(tool) for tool in tools]
 
 
+@router.get("/tags/suggest")
+def suggest_tags(q: str = "", session: Session = Depends(get_session)) -> List[str]:
+    """Get tag suggestions based on existing tags."""
+    repo = ToolRepository(session)
+    return repo.get_tag_suggestions(q)
+
+
 @router.get("/{tool_id}", response_model=ToolRead)
 def read_tool(tool_id: int, session: Session = Depends(get_session)) -> ToolRead:
     """Get a single tool by ID."""

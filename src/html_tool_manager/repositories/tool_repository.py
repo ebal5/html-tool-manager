@@ -169,3 +169,38 @@ class ToolRepository:
         self.session.delete(tool)
         self.session.commit()
         return tool
+
+    def get_tag_suggestions(self, query: str = "", limit: int = 20) -> List[str]:
+        """Get tag suggestions based on existing tags.
+
+        Args:
+            query: Search query to filter tags (case-insensitive partial match).
+            limit: Maximum number of suggestions to return.
+
+        Returns:
+            List of unique tags matching the query, sorted by frequency (most common first).
+
+        """
+        # すべてのツールを取得
+        statement = select(Tool)
+        tools = self.session.exec(statement).all()
+
+        # タグを収集し、頻度をカウント
+        tag_counts: dict[str, int] = {}
+        for tool in tools:
+            if tool.tags:
+                for tag in tool.tags:
+                    tag_counts[tag] = tag_counts.get(tag, 0) + 1
+
+        # クエリでフィルタリング（大文字小文字を区別しない部分一致）
+        query_lower = query.lower()
+        if query_lower:
+            filtered_tags = [tag for tag in tag_counts if query_lower in tag.lower()]
+        else:
+            filtered_tags = list(tag_counts.keys())
+
+        # 頻度順でソート（降順）
+        sorted_tags = sorted(filtered_tags, key=lambda t: tag_counts[t], reverse=True)
+
+        # 制限を適用
+        return sorted_tags[:limit]
