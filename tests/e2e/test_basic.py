@@ -35,7 +35,11 @@ class TestToolCRUD:
         test_page.fill("#name", "Test Tool")
         test_page.fill("#description", "Test Description")
         test_page.fill("#tags", "test, e2e")
-        test_page.fill("#html_content", "<p>Hello E2E!</p>")
+
+        # Wait for Ace Editor and type code
+        ace_textarea = test_page.locator("#code-editor textarea.ace_text-input")
+        ace_textarea.focus()
+        test_page.keyboard.type("<p>Hello E2E!</p>")
 
         # Submit
         test_page.click("#submit-btn")
@@ -64,3 +68,56 @@ class TestNavigation:
         # Click home link
         test_page.click("a[href='/']")
         expect(test_page).to_have_url(f"{live_server}/")
+
+
+@pytest.mark.e2e
+class TestAceEditor:
+    """Tests for Ace Editor integration."""
+
+    def test_editor_loads_on_create_page(self, test_page: Page, live_server: str) -> None:
+        """Ace Editor should load on create page."""
+        test_page.click("a[href='/tools/create']")
+        expect(test_page).to_have_url(f"{live_server}/tools/create")
+
+        # Wait for Ace Editor to initialize
+        editor = test_page.locator("#code-editor")
+        expect(editor).to_be_visible()
+
+        # Ace Editor creates a specific class structure
+        ace_content = test_page.locator("#code-editor .ace_content")
+        expect(ace_content).to_be_visible()
+
+    def test_editor_syntax_highlight(self, test_page: Page, live_server: str) -> None:
+        """Ace Editor should provide syntax highlighting."""
+        test_page.click("a[href='/tools/create']")
+
+        # Wait for editor to be ready
+        editor = test_page.locator("#code-editor")
+        expect(editor).to_be_visible()
+
+        # Type HTML code into the editor
+        ace_textarea = test_page.locator("#code-editor textarea.ace_text-input")
+        ace_textarea.focus()
+        test_page.keyboard.type("<div>Hello</div>")
+
+        # Check for syntax highlighting (ace adds specific classes)
+        expect(test_page.locator("#code-editor .ace_tag-name").first).to_be_visible()
+
+    def test_editor_mode_switch(self, test_page: Page, live_server: str) -> None:
+        """Editor mode should switch when tool type changes."""
+        test_page.click("a[href='/tools/create']")
+
+        # Wait for editor to be ready
+        editor = test_page.locator("#code-editor")
+        expect(editor).to_be_visible()
+
+        # Select React type
+        test_page.select_option("#tool_type", "react")
+
+        # Type JSX code
+        ace_textarea = test_page.locator("#code-editor textarea.ace_text-input")
+        ace_textarea.focus()
+        test_page.keyboard.type("const App = () => <div>Hello</div>")
+
+        # JSX mode should highlight const as keyword
+        expect(test_page.locator("#code-editor .ace_keyword")).to_be_visible()
