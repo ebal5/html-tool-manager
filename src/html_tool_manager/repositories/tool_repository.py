@@ -23,6 +23,35 @@ class SortOrder(str, Enum):
     UPDATED_DESC = "updated_desc"
 
 
+def _escape_fts5_term(term: str) -> str:
+    """Escape special characters for FTS5 query.
+
+    FTS5では特殊文字をダブルクォートで囲むことでリテラルとして扱える。
+    ダブルクォート自体は "" でエスケープする。
+
+    Args:
+        term: The search term to escape.
+
+    Returns:
+        Escaped term safe for FTS5 query, with wildcard suffix.
+
+    """
+    # 空文字列や空白のみの場合はスキップ
+    if not term or not term.strip():
+        return ""
+
+    # 既に末尾が * の場合は除去（後で追加するため）
+    term = term.rstrip("*")
+    if not term:
+        return ""
+
+    # ダブルクォートをエスケープ
+    escaped = term.replace('"', '""')
+
+    # ダブルクォートで囲んで、接頭辞検索用の * を追加
+    return f'"{escaped}"*'
+
+
 class ToolRepository:
     """Repository class encapsulating database operations for tools."""
 
@@ -94,19 +123,26 @@ class ToolRepository:
         """Search for tools with the specified query and sort order."""
         statement = select(Tool)  # ベースとなるクエリ
 
-        # FTS検索条件の組み立て
+        # FTS検索条件の組み立て（特殊文字をエスケープ）
         fts_query_parts = []
         if parsed_query.get("term"):
-            # "term*" のようにクォートで囲む必要はない
-            terms = " OR ".join([f"{term}*" for term in parsed_query["term"]])
-            fts_query_parts.append(f"({terms})")
+            escaped_terms = [_escape_fts5_term(t) for t in parsed_query["term"]]
+            escaped_terms = [t for t in escaped_terms if t]  # 空文字を除去
+            if escaped_terms:
+                terms = " OR ".join(escaped_terms)
+                fts_query_parts.append(f"({terms})")
         if parsed_query.get("name"):
-            # name:j* のようにクォートで囲まない
-            terms = " OR ".join([f"{term}*" for term in parsed_query["name"]])
-            fts_query_parts.append(f"name:{terms}")
+            escaped_terms = [_escape_fts5_term(t) for t in parsed_query["name"]]
+            escaped_terms = [t for t in escaped_terms if t]
+            if escaped_terms:
+                terms = " OR ".join(escaped_terms)
+                fts_query_parts.append(f"name:{terms}")
         if parsed_query.get("desc"):
-            terms = " OR ".join([f"{term}*" for term in parsed_query["desc"]])
-            fts_query_parts.append(f"description:{terms}")
+            escaped_terms = [_escape_fts5_term(t) for t in parsed_query["desc"]]
+            escaped_terms = [t for t in escaped_terms if t]
+            if escaped_terms:
+                terms = " OR ".join(escaped_terms)
+                fts_query_parts.append(f"description:{terms}")
 
         # FTS仮想テーブルをTableオブジェクトとして定義 (rankカラムも定義)
         fts_metadata = MetaData()

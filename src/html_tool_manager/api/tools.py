@@ -88,8 +88,8 @@ def update_tool(tool_id: int, tool_data: ToolCreate, session: Session = Depends(
         with open(tool_to_update.filepath, "w", encoding="utf-8") as f:
             f.write(final_html)
 
-    # メタデータを更新
-    update_data = tool_data.model_dump(exclude_unset=True, exclude={"html_content"})
+    # メタデータを更新（filepathは変更不可 - セキュリティのため既存の値を維持）
+    update_data = tool_data.model_dump(exclude_unset=True, exclude={"html_content", "filepath"})
     tool_to_update.sqlmodel_update(update_data)
 
     # 存在確認は上で済んでいるため、update_toolは必ずToolを返す

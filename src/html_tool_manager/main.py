@@ -39,6 +39,7 @@ async def add_security_headers(request: Request, call_next: RequestResponseEndpo
 
     # 共通セキュリティヘッダー
     response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"  # クリックジャッキング対策
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
 
     # ツール用HTMLにはCSPを設定しない（iframe sandboxで保護）
