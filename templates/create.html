@@ -46,9 +46,14 @@
     <script>
         // Ace Editorを初期化
         let codeEditor = null;
-        document.addEventListener('DOMContentLoaded', function() {
+        function initEditor() {
             codeEditor = initializeAceEditor('html_content', 'code-editor');
-        });
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initEditor);
+        } else {
+            initEditor();
+        }
 
         // エラーメッセージを安全に表示するヘルパー関数
         function showError(messageDiv, errorText) {

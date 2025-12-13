@@ -23,6 +23,12 @@ function initializeAceEditor(textareaId, editorId) {
     return null;
   }
 
+  // 親要素の存在確認
+  if (!textarea.parentNode) {
+    console.error('Textarea has no parent element');
+    return null;
+  }
+
   // エディタコンテナを作成
   const editorContainer = document.createElement('div');
   editorContainer.id = editorId;
@@ -50,7 +56,7 @@ function initializeAceEditor(textareaId, editorId) {
     enableLiveAutocompletion: false,
     showPrintMargin: false,
     tabSize: 2,
-    useSoftTabs: false,
+    useSoftTabs: true,
     wrap: true,
   });
 
