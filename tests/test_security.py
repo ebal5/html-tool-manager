@@ -1,16 +1,6 @@
 """Security tests for the HTML Tool Manager."""
 
-import pytest
-from fastapi.testclient import TestClient
-
-from html_tool_manager.main import app
 from html_tool_manager.repositories.tool_repository import _escape_fts5_term
-
-
-@pytest.fixture
-def client():
-    """Create a test client."""
-    return TestClient(app)
 
 
 class TestFTS5Injection:
