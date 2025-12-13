@@ -35,11 +35,9 @@ def read_tools(
 ) -> List[ToolRead]:
     """Get a list of tools, or search for tools."""
     repo = ToolRepository(session)
-    if q:
-        parsed_query = parse_query(q)
-        tools = repo.search_tools(parsed_query, sort=sort, offset=offset, limit=limit)
-    else:
-        tools = repo.get_all_tools(offset=offset, limit=limit)
+    # クエリがない場合も空のdictでsearch_toolsを呼び、sortを適用
+    parsed_query = parse_query(q) if q else {}
+    tools = repo.search_tools(parsed_query, sort=sort, offset=offset, limit=limit)
 
     # ToolReadモデルを使って明示的にレスポンスを構築
     return [ToolRead.model_validate(tool) for tool in tools]

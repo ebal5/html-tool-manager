@@ -155,8 +155,18 @@ function validateToolForm(formData) {
   }
   data.tags = tagsResult.value;
 
-  // html_contentはそのまま渡す（サーバー側で処理）
-  data.html_content = formData.html_content;
+  // html_contentのバリデーション
+  // null: 編集時にファイルパスツールで省略される場合があるため許可
+  // 空文字列: 新規作成時や貼り付けコンテンツ編集時は必須
+  if (formData.html_content === null || formData.html_content === undefined) {
+    // ファイルパスツールの編集時は省略可能
+    data.html_content = null;
+  } else if (formData.html_content.trim() === '') {
+    errors.push('コードは必須です');
+    data.html_content = formData.html_content;
+  } else {
+    data.html_content = formData.html_content;
+  }
 
   // tool_type のバリデーション（オプショナル、自動検出を許可）
   if (
