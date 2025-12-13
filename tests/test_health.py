@@ -4,19 +4,16 @@ from unittest.mock import MagicMock, patch
 
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import OperationalError
-
-from html_tool_manager.main import app
-
-client = TestClient(app)
+from sqlmodel import Session
 
 
-def test_health_check_returns_200() -> None:
+def test_health_check_returns_200(session: Session, client: TestClient) -> None:
     """Test that health check endpoint returns 200 when healthy."""
     response = client.get("/health")
     assert response.status_code == 200
 
 
-def test_health_check_response_structure() -> None:
+def test_health_check_response_structure(session: Session, client: TestClient) -> None:
     """Test that health check response has correct structure."""
     response = client.get("/health")
     data = response.json()
@@ -26,7 +23,7 @@ def test_health_check_response_structure() -> None:
     assert "database" in data["components"]
 
 
-def test_health_check_database_healthy() -> None:
+def test_health_check_database_healthy(session: Session, client: TestClient) -> None:
     """Test that database component is healthy."""
     response = client.get("/health")
     data = response.json()
@@ -35,7 +32,7 @@ def test_health_check_database_healthy() -> None:
     assert data["components"]["database"] == "healthy"
 
 
-def test_health_check_database_error_returns_503() -> None:
+def test_health_check_database_error_returns_503(session: Session, client: TestClient) -> None:
     """Test that health check returns 503 when database is unhealthy."""
     mock_engine = MagicMock()
     mock_engine.connect.side_effect = OperationalError("Database connection failed", params=None, orig=None)
