@@ -90,7 +90,9 @@
                 if (tool.filepath && tool.filepath.startsWith(TOOL_PATH_PREFIX)) {
                     toolContentEl.innerHTML = '';
                     const iframe = document.createElement('iframe');
-                    iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+                    // セキュリティ: allow-scripts のみ設定
+                    // allow-same-origin は同一オリジンでサンドボックスをバイパス可能なため除外
+                    iframe.setAttribute('sandbox', 'allow-scripts');
                     iframe.src = '/' + tool.filepath;
                     iframe.title = tool.name; // アクセシビリティ: スクリーンリーダー用
                     toolContentEl.appendChild(iframe);

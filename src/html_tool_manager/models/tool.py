@@ -87,6 +87,23 @@ class ToolBase(SQLModel):
 
         return validated_tags
 
+    @field_validator("filepath", mode="before")
+    @classmethod
+    def validate_filepath(cls, v: Optional[str]) -> Optional[str]:
+        """filepathのバリデーション：ディレクトリトラバーサル防止。"""
+        if v is None:
+            return v
+        # ディレクトリトラバーサル攻撃を防止
+        if ".." in v:
+            raise ValueError("filepathに'..'を含めることはできません")
+        # 絶対パスを拒否
+        if v.startswith("/"):
+            raise ValueError("filepathに絶対パスは使用できません")
+        # static/tools/配下のみ許可
+        if not v.startswith("static/tools/"):
+            raise ValueError("filepathはstatic/tools/配下である必要があります")
+        return v
+
 
 class Tool(ToolBase, table=True):
     """Tool model stored in the database."""

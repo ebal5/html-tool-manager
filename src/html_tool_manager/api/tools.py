@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 import msgpack
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
@@ -12,6 +12,23 @@ from html_tool_manager.repositories import SortOrder, ToolRepository
 from .query_parser import parse_query
 
 router = APIRouter(prefix="/tools", tags=["tools"])
+
+
+# --- Pydantic Response/Request Models ---
+class ToolExportRequest(BaseModel):
+    """Request model for exporting tools."""
+
+    tool_ids: List[int]
+
+
+class ToolImportResponse(BaseModel):
+    """Response model for tool import."""
+
+    imported_count: int
+
+
+# インポートファイルの最大サイズ（10MB）
+MAX_IMPORT_FILE_SIZE = 10 * 1024 * 1024
 
 
 @router.post("/", response_model=ToolRead, status_code=status.HTTP_201_CREATED)
@@ -30,22 +47,20 @@ def read_tools(
     session: Session = Depends(get_session),
     q: Optional[str] = Query(None, description="検索クエリ（例: 'name:', 'desc:', 'tag:'）"),
     sort: SortOrder = Query(SortOrder.RELEVANCE, description="ソート順"),
-    offset: int = 0,
-    limit: int = 100,
+    offset: int = Query(default=0, ge=0, description="オフセット（0以上）"),
+    limit: int = Query(default=100, ge=1, le=1000, description="取得件数（1-1000）"),
 ) -> List[ToolRead]:
     """Get a list of tools, or search for tools."""
     repo = ToolRepository(session)
-    if q:
-        parsed_query = parse_query(q)
-        tools = repo.search_tools(parsed_query, sort=sort, offset=offset, limit=limit)
-    else:
-        tools = repo.get_all_tools(offset=offset, limit=limit)
+    # クエリがない場合も空のdictでsearch_toolsを呼び、sortを適用
+    parsed_query = parse_query(q) if q else {}
+    tools = repo.search_tools(parsed_query, sort=sort, offset=offset, limit=limit)
 
     # ToolReadモデルを使って明示的にレスポンスを構築
     return [ToolRead.model_validate(tool) for tool in tools]
 
 
-@router.get("/tags/suggest")
+@router.get("/tags/suggest", response_model=List[str])
 def suggest_tags(
     q: str = Query(default="", max_length=50, description="タグ検索クエリ（部分一致）"),
     session: Session = Depends(get_session),
@@ -77,6 +92,8 @@ def update_tool(tool_id: int, tool_data: ToolCreate, session: Session = Depends(
 
     # html_contentが提供された場合は、既存のファイルを上書き
     if tool_data.html_content is not None:
+        import os
+
         from html_tool_manager.models.tool import ToolType
         from html_tool_manager.templates.react_template import generate_react_html
 
@@ -86,12 +103,28 @@ def update_tool(tool_id: int, tool_data: ToolCreate, session: Session = Depends(
         else:
             final_html = tool_data.html_content
 
-        # アプリによって作成された安全なパスであることを前提とする
-        with open(tool_to_update.filepath, "w", encoding="utf-8") as f:
+        # TOCTOU対策: ファイルパスを検証してシンボリックリンク攻撃を防止
+        filepath = tool_to_update.filepath
+        if not filepath or ".." in filepath or not filepath.startswith("static/tools/"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid filepath",
+            )
+
+        # 実際のパスを解決してstatic/tools/配下であることを確認
+        real_path = os.path.realpath(filepath)
+        expected_base = os.path.realpath("static/tools")
+        if not real_path.startswith(expected_base + os.sep):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid filepath: path traversal detected",
+            )
+
+        with open(filepath, "w", encoding="utf-8") as f:
             f.write(final_html)
 
-    # メタデータを更新
-    update_data = tool_data.model_dump(exclude_unset=True, exclude={"html_content"})
+    # メタデータを更新（filepathは変更不可 - セキュリティのため既存の値を維持）
+    update_data = tool_data.model_dump(exclude_unset=True, exclude={"html_content", "filepath"})
     tool_to_update.sqlmodel_update(update_data)
 
     # 存在確認は上で済んでいるため、update_toolは必ずToolを返す
@@ -108,12 +141,6 @@ def delete_tool(tool_id: int, session: Session = Depends(get_session)) -> None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tool not found")
     # 204 No Contentのため、レスポンスボディは返さない
     return None
-
-
-class ToolExportRequest(BaseModel):
-    """Request model for exporting tools."""
-
-    tool_ids: List[int]
 
 
 @router.post("/export", response_class=Response)
@@ -154,13 +181,19 @@ def export_tools(export_request: ToolExportRequest, session: Session = Depends(g
     )
 
 
-@router.post("/import")
-async def import_tools(file: UploadFile = File(...), session: Session = Depends(get_session)) -> Dict[str, int]:
+@router.post("/import", response_model=ToolImportResponse)
+async def import_tools(file: UploadFile = File(...), session: Session = Depends(get_session)) -> ToolImportResponse:
     """Import tools from a MessagePack file."""
     if file.content_type != "application/octet-stream":
         raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail="Unsupported file type.")
 
+    # ファイルサイズの制限を確認
     contents = await file.read()
+    if len(contents) > MAX_IMPORT_FILE_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"File too large. Maximum size is {MAX_IMPORT_FILE_SIZE // (1024 * 1024)}MB.",
+        )
 
     try:
         tools_to_import = msgpack.unpackb(contents, raw=False)
@@ -179,4 +212,4 @@ async def import_tools(file: UploadFile = File(...), session: Session = Depends(
             # 不正なデータはスキップ
             continue
 
-    return {"imported_count": imported_count}
+    return ToolImportResponse(imported_count=imported_count)

@@ -112,7 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <summary role="button" class="contrast outline">⋮</summary>
                         <ul style="position: absolute; z-index: 1;">
                             <li><a href="/tools/edit/${tool.id}">編集</a></li>
-                            <li><a href="#" onclick="event.preventDefault(); deleteTool(${tool.id}, this)">削除</a></li>
+                            <li><a href="#" class="delete-tool-btn" data-tool-id="${tool.id}">削除</a></li>
                         </ul>
                     </details>
                 </div>`;
@@ -139,6 +139,9 @@ document.addEventListener('DOMContentLoaded', () => {
           });
         });
       }
+
+      // 削除ボタンのイベント委譲（インラインハンドラを避けてCSP準拠）
+      container.addEventListener('click', handleDeleteClick);
     } catch (error) {
       container.innerHTML = `<p style="color: var(--pico-color-red-500);">ツールの読み込みに失敗しました。</p>`;
       console.error('Error fetching tools:', error);
@@ -178,30 +181,37 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // --- ツール削除機能 ---
-  window.deleteTool = (toolId, buttonElement) => {
+  // --- ツール削除機能（イベント委譲ハンドラ） ---
+  function handleDeleteClick(event) {
+    const deleteBtn = event.target.closest('.delete-tool-btn');
+    if (!deleteBtn) return;
+
+    event.preventDefault();
+    const toolId = deleteBtn.dataset.toolId;
+    if (!toolId) return;
+
     if (confirm(`ツールID: ${toolId} を削除しますか？`)) {
-      buttonElement.setAttribute('aria-busy', 'true');
+      deleteBtn.setAttribute('aria-busy', 'true');
       fetch(`/api/tools/${toolId}`, {
         method: 'DELETE',
       })
         .then((response) => {
           if (response.ok) {
-            const row = buttonElement.closest('tr');
+            const row = deleteBtn.closest('tr');
             row.parentNode.removeChild(row);
             fetchTools(); // ツールリストをリロード
           } else {
             alert('ツールの削除に失敗しました。');
-            buttonElement.removeAttribute('aria-busy');
+            deleteBtn.removeAttribute('aria-busy');
           }
         })
         .catch((error) => {
           console.error('Error:', error);
           alert('削除中にエラーが発生しました。');
-          buttonElement.removeAttribute('aria-busy');
+          deleteBtn.removeAttribute('aria-busy');
         });
     }
-  };
+  }
 
   // --- ツールエクスポート機能 ---
   if (exportSelectedBtn) {

@@ -1,4 +1,5 @@
 import os
+import shutil
 import uuid
 from enum import Enum
 from typing import Dict, List, Optional
@@ -21,6 +22,46 @@ class SortOrder(str, Enum):
     NAME_DESC = "name_desc"
     UPDATED_ASC = "updated_asc"
     UPDATED_DESC = "updated_desc"
+
+
+def _escape_fts5_term(term: str) -> str:
+    """Escape special characters for FTS5 query.
+
+    FTS5では特殊文字をダブルクォートで囲むことでリテラルとして扱える。
+    ダブルクォート自体は "" でエスケープする。
+    制御文字（特にnull byte）はSQLiteエラーの原因となるため除去する。
+
+    Args:
+        term: The search term to escape.
+
+    Returns:
+        Escaped term safe for FTS5 query, with wildcard suffix.
+        Returns empty string for invalid terms (empty, incomplete field prefix, etc.).
+
+    """
+    # 空文字列や空白のみの場合はスキップ
+    if not term or not term.strip():
+        return ""
+
+    # 制御文字を除去（null byte等がSQLiteエラーの原因となる）
+    # 0x20未満の制御文字（\t, \n, null byte等）は検索クエリでは不要なので除去
+    term = "".join(c for c in term if ord(c) >= 0x20)
+
+    # 既に末尾が * の場合は除去（後で追加するため）
+    term = term.rstrip("*")
+    if not term:
+        return ""
+
+    # 不完全なフィールドプレフィックス（例: "tag:", "name:"）をスキップ
+    # これらはFTS5でカラム指定子として解釈されエラーの原因となる
+    if term.endswith(":") and term[:-1].isalpha():
+        return ""
+
+    # ダブルクォートをエスケープ
+    escaped = term.replace('"', '""')
+
+    # ダブルクォートで囲んで、接頭辞検索用の * を追加
+    return f'"{escaped}"*'
 
 
 class ToolRepository:
@@ -60,11 +101,14 @@ class ToolRepository:
 
         # 一意のディレクトリとファイルパスを生成
         tool_dir = f"static/tools/{uuid.uuid4()}"
-        os.makedirs(tool_dir, exist_ok=True)
+        # 明示的な権限でディレクトリを作成（owner: rwx, group/other: rx）
+        os.makedirs(tool_dir, mode=0o755, exist_ok=True)
         final_filepath = f"{tool_dir}/index.html"
 
+        # ファイルを作成し、明示的な権限を設定（owner: rw, group/other: r）
         with open(final_filepath, "w", encoding="utf-8") as f:
             f.write(final_html)
+        os.chmod(final_filepath, 0o644)
 
         # DBに保存するモデルのfilepathを更新
         tool_data.filepath = final_filepath
@@ -94,19 +138,26 @@ class ToolRepository:
         """Search for tools with the specified query and sort order."""
         statement = select(Tool)  # ベースとなるクエリ
 
-        # FTS検索条件の組み立て
+        # FTS検索条件の組み立て（特殊文字をエスケープ）
         fts_query_parts = []
         if parsed_query.get("term"):
-            # "term*" のようにクォートで囲む必要はない
-            terms = " OR ".join([f"{term}*" for term in parsed_query["term"]])
-            fts_query_parts.append(f"({terms})")
+            escaped_terms = [_escape_fts5_term(t) for t in parsed_query["term"]]
+            escaped_terms = [t for t in escaped_terms if t]  # 空文字を除去
+            if escaped_terms:
+                terms = " OR ".join(escaped_terms)
+                fts_query_parts.append(f"({terms})")
         if parsed_query.get("name"):
-            # name:j* のようにクォートで囲まない
-            terms = " OR ".join([f"{term}*" for term in parsed_query["name"]])
-            fts_query_parts.append(f"name:{terms}")
+            escaped_terms = [_escape_fts5_term(t) for t in parsed_query["name"]]
+            escaped_terms = [t for t in escaped_terms if t]
+            if escaped_terms:
+                terms = " OR ".join(escaped_terms)
+                fts_query_parts.append(f"name:{terms}")
         if parsed_query.get("desc"):
-            terms = " OR ".join([f"{term}*" for term in parsed_query["desc"]])
-            fts_query_parts.append(f"description:{terms}")
+            escaped_terms = [_escape_fts5_term(t) for t in parsed_query["desc"]]
+            escaped_terms = [t for t in escaped_terms if t]
+            if escaped_terms:
+                terms = " OR ".join(escaped_terms)
+                fts_query_parts.append(f"description:{terms}")
 
         # FTS仮想テーブルをTableオブジェクトとして定義 (rankカラムも定義)
         fts_metadata = MetaData()
@@ -121,10 +172,11 @@ class ToolRepository:
                 .params(fts_query=fts_match_query)
             )
 
-        # タグ検索条件
+        # タグ検索条件（LIKEワイルドカード文字をエスケープ）
         if parsed_query.get("tag"):
             for tag_query in parsed_query["tag"]:
-                statement = statement.where(cast(Tool.tags, String).like(f"%{tag_query}%"))
+                escaped_tag = self._escape_like_pattern(tag_query)
+                statement = statement.where(cast(Tool.tags, String).like(f"%{escaped_tag}%", escape="\\"))
 
         # ソート順
         if sort == SortOrder.RELEVANCE and fts_query_parts:
@@ -162,12 +214,35 @@ class ToolRepository:
         return tool
 
     def delete_tool(self, tool_id: int) -> Optional[Tool]:
-        """Delete a tool."""
+        """Delete a tool and its associated files."""
         tool = self.session.get(Tool, tool_id)
         if not tool:
             return None
+
+        # filepathを保存（DBから削除後にファイル削除するため）
+        filepath = tool.filepath
+
+        # 先にDBから削除（コミット成功後にファイル削除）
         self.session.delete(tool)
         self.session.commit()
+
+        # DBコミット成功後にファイルとディレクトリを削除
+        # これによりDB削除失敗時にファイルだけ消える問題を防ぐ
+        if filepath and filepath.startswith("static/tools/"):
+            tool_dir = os.path.dirname(filepath)
+            # シンボリックリンク攻撃を防止: 実際のパスがstatic/tools/配下であることを確認
+            try:
+                real_dir = os.path.realpath(tool_dir)
+                expected_base = os.path.realpath("static/tools")
+                if not real_dir.startswith(expected_base + os.sep):
+                    # パストラバーサル攻撃の可能性 - 削除をスキップ
+                    pass
+                elif os.path.exists(tool_dir) and os.path.isdir(tool_dir):
+                    shutil.rmtree(tool_dir)
+            except OSError:
+                # ファイル削除に失敗してもログのみ（DBは既に削除済み）
+                pass
+
         return tool
 
     @staticmethod
