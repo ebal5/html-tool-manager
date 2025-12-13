@@ -1,4 +1,5 @@
 import os
+import shutil
 import uuid
 from enum import Enum
 from typing import Dict, List, Optional
@@ -43,8 +44,8 @@ def _escape_fts5_term(term: str) -> str:
         return ""
 
     # 制御文字を除去（null byte等がSQLiteエラーの原因となる）
-    # \t (0x09), \n (0x0a) は検索クエリでは不要なので除去
-    term = "".join(c for c in term if ord(c) >= 0x20 or c in "")
+    # 0x20未満の制御文字（\t, \n, null byte等）は検索クエリでは不要なので除去
+    term = "".join(c for c in term if ord(c) >= 0x20)
 
     # 既に末尾が * の場合は除去（後で追加するため）
     term = term.rstrip("*")
@@ -214,21 +215,24 @@ class ToolRepository:
         if not tool:
             return None
 
-        # ファイルとディレクトリを削除
+        # filepathを保存（DBから削除後にファイル削除するため）
         filepath = tool.filepath
-        if filepath and filepath.startswith("static/tools/"):
-            import shutil
 
+        # 先にDBから削除（コミット成功後にファイル削除）
+        self.session.delete(tool)
+        self.session.commit()
+
+        # DBコミット成功後にファイルとディレクトリを削除
+        # これによりDB削除失敗時にファイルだけ消える問題を防ぐ
+        if filepath and filepath.startswith("static/tools/"):
             tool_dir = os.path.dirname(filepath)
             if os.path.exists(tool_dir):
                 try:
                     shutil.rmtree(tool_dir)
                 except OSError:
-                    # ファイル削除に失敗してもDB削除は続行
+                    # ファイル削除に失敗してもログのみ（DBは既に削除済み）
                     pass
 
-        self.session.delete(tool)
-        self.session.commit()
         return tool
 
     @staticmethod
