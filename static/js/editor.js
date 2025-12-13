@@ -4,13 +4,35 @@
  */
 
 /**
+ * ツールタイプからAceモードを取得
+ * @param {string} toolType - ツールタイプ ('html' | 'react' | '')
+ * @returns {string} - Aceモード名
+ */
+function getAceModeForToolType(toolType) {
+  return toolType === 'react' ? 'ace/mode/jsx' : 'ace/mode/html';
+}
+
+/**
+ * エディタのモードを切り替え
+ * @param {object} editor - Ace Editorインスタンス
+ * @param {string} toolType - ツールタイプ ('html' | 'react' | '')
+ */
+// biome-ignore lint/correctness/noUnusedVariables: HTMLテンプレートから呼び出される
+function setEditorMode(editor, toolType) {
+  if (editor) {
+    editor.session.setMode(getAceModeForToolType(toolType));
+  }
+}
+
+/**
  * Ace Editorを初期化
  * @param {string} textareaId - 置き換え対象のtextareaのID
  * @param {string} editorId - 作成するエディタコンテナのID
+ * @param {string} [toolType='html'] - ツールタイプ ('html' | 'react')
  * @returns {object|null} - Ace Editorインスタンスまたはnull
  */
 // biome-ignore lint/correctness/noUnusedVariables: HTMLテンプレートから呼び出される
-function initializeAceEditor(textareaId, editorId) {
+function initializeAceEditor(textareaId, editorId, toolType = 'html') {
   const textarea = document.getElementById(textareaId);
   if (!textarea) {
     console.error('Textarea not found:', textareaId);
@@ -46,7 +68,7 @@ function initializeAceEditor(textareaId, editorId) {
 
   // エディタ設定
   editor.setTheme('ace/theme/monokai');
-  editor.session.setMode('ace/mode/html');
+  editor.session.setMode(getAceModeForToolType(toolType));
   editor.setOptions({
     fontSize: '14px',
     showLineNumbers: true,
