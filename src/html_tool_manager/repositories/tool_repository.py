@@ -170,17 +170,27 @@ class ToolRepository:
         self.session.commit()
         return tool
 
-    def get_tag_suggestions(self, query: str = "", limit: int = 20) -> List[str]:
+    def get_tag_suggestions(
+        self, query: str = "", limit: int = 20, max_query_length: int = 50
+    ) -> List[str]:
         """Get tag suggestions based on existing tags.
 
         Args:
             query: Search query to filter tags (case-insensitive partial match).
             limit: Maximum number of suggestions to return.
+            max_query_length: Maximum allowed query length for validation.
 
         Returns:
             List of unique tags matching the query, sorted by frequency (most common first).
 
+        Raises:
+            ValueError: If query exceeds max_query_length.
+
         """
+        # リポジトリレベルでのバリデーション（APIレイヤー以外からの呼び出しに対応）
+        if len(query) > max_query_length:
+            raise ValueError(f"Query must not exceed {max_query_length} characters")
+
         # SQLiteのjson_each関数を使用してタグを集計
         # これにより全ツールをメモリに読み込まずにDB側で処理できる
         sql = text("""
