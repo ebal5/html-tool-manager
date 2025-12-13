@@ -121,3 +121,25 @@ class TestAceEditor:
 
         # JSX mode should highlight const as keyword
         expect(test_page.locator("#code-editor .ace_keyword")).to_be_visible()
+
+    def test_editor_loads_on_edit_page(self, test_page: Page, live_server: str) -> None:
+        """Ace Editor should load on edit page with existing content."""
+        # First create a tool
+        test_page.click("a[href='/tools/create']")
+        test_page.fill("#name", "Editor Test Tool")
+        ace_textarea = test_page.locator("#code-editor textarea.ace_text-input")
+        ace_textarea.focus()
+        test_page.keyboard.type("<h1>Test Content</h1>")
+        test_page.click("#submit-btn")
+        expect(test_page.locator("#message")).to_contain_text("作成しました")
+
+        # Navigate to edit page
+        test_page.click("#message a[href^='/tools/view/']")
+        test_page.click("a[href^='/tools/edit/']")
+
+        # Wait for Ace Editor to initialize on edit page
+        editor = test_page.locator("#code-editor-edit")
+        expect(editor).to_be_visible()
+
+        # Verify existing content is loaded (check for syntax highlighting)
+        expect(test_page.locator("#code-editor-edit .ace_tag-name").first).to_be_visible()

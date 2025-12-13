@@ -124,7 +124,14 @@
                     sourceSection.appendChild(textarea);
 
                     // Ace Editorを初期化（ツールタイプに応じたモードで）
-                    codeEditor = initializeAceEditor('html_content', 'code-editor-edit', tool.tool_type);
+                    function initEditorWithRetry() {
+                        if (typeof ace === 'undefined') {
+                            setTimeout(initEditorWithRetry, 100);
+                            return;
+                        }
+                        codeEditor = initializeAceEditor('html_content', 'code-editor-edit', tool.tool_type);
+                    }
+                    initEditorWithRetry();
                 } else {
                     // Display a read-only filepath (XSS対策: DOM APIで構築)
                     sourceSection.innerHTML = '';

@@ -48,6 +48,11 @@
         // Ace Editorを初期化
         let codeEditor = null;
         function initEditor() {
+            // Ace Editorがまだ読み込まれていない場合はリトライ
+            if (typeof ace === 'undefined') {
+                setTimeout(initEditor, 100);
+                return;
+            }
             codeEditor = initializeAceEditor('html_content', 'code-editor');
         }
         if (document.readyState === 'loading') {
