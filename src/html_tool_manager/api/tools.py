@@ -46,7 +46,10 @@ def read_tools(
 
 
 @router.get("/tags/suggest")
-def suggest_tags(q: str = "", session: Session = Depends(get_session)) -> List[str]:
+def suggest_tags(
+    q: str = Query(default="", max_length=50, description="タグ検索クエリ（部分一致）"),
+    session: Session = Depends(get_session),
+) -> List[str]:
     """Get tag suggestions based on existing tags."""
     repo = ToolRepository(session)
     return repo.get_tag_suggestions(q)
