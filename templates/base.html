@@ -4,7 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}HTML Tool Manager{% endblock %}</title>
+    <!-- FLASH防止: theme.jsを最優先で読み込み -->
+    <script src="/static/js/theme.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
+    <link rel="stylesheet" href="/static/css/app.css" />
 </head>
 <body>
     <main class="container">
@@ -15,6 +18,9 @@
             <ul>
                 <li><a href="/">ホーム</a></li>
                 <li><a href="/tools/create">新規作成</a></li>
+                <li>
+                    <button id="theme-toggle" class="outline secondary" aria-label="テーマ切り替え" title="テーマ切り替え"></button>
+                </li>
             </ul>
         </nav>
         <hr>
