@@ -3,17 +3,58 @@
  * Pico.cssのdata-theme属性を使用してダークモード切り替えを実装
  */
 
-const THEMES = {
+/**
+ * @typedef {'light' | 'dark' | 'auto'} ThemePreference
+ */
+
+/**
+ * 利用可能なテーマ設定
+ * @type {Readonly<{LIGHT: 'light', DARK: 'dark', AUTO: 'auto'}>}
+ */
+const THEMES = Object.freeze({
   LIGHT: 'light',
   DARK: 'dark',
   AUTO: 'auto',
-};
+});
+
+/** @type {ReadonlySet<string>} 有効なテーマ値のセット */
+const VALID_THEMES = new Set([THEMES.LIGHT, THEMES.DARK, THEMES.AUTO]);
 
 const STORAGE_KEY = 'theme-preference';
 
 /**
+ * テーマ切り替えボタンに表示するアイコン
+ * @type {Readonly<Record<ThemePreference, string>>}
+ */
+const THEME_ICONS = Object.freeze({
+  [THEMES.LIGHT]: '\u2600\uFE0F',
+  [THEMES.DARK]: '\uD83C\uDF19',
+  [THEMES.AUTO]: '\uD83D\uDDA5\uFE0F',
+});
+
+/**
+ * テーマ切り替えボタンのラベル
+ * @type {Readonly<Record<ThemePreference, string>>}
+ */
+const THEME_LABELS = Object.freeze({
+  [THEMES.LIGHT]: 'ライトモード',
+  [THEMES.DARK]: 'ダークモード',
+  [THEMES.AUTO]: 'システム設定',
+});
+
+/**
+ * テーマサイクル順序: light → dark → auto → light
+ * @type {Readonly<Record<ThemePreference, ThemePreference>>}
+ */
+const THEME_CYCLE = Object.freeze({
+  [THEMES.LIGHT]: THEMES.DARK,
+  [THEMES.DARK]: THEMES.AUTO,
+  [THEMES.AUTO]: THEMES.LIGHT,
+});
+
+/**
  * システムのカラースキーム設定を取得
- * @returns {string} "light" または "dark"
+ * @returns {'light' | 'dark'} システムのテーマ
  */
 function getSystemTheme() {
   if (window.matchMedia?.('(prefers-color-scheme: dark)').matches) {
@@ -24,11 +65,16 @@ function getSystemTheme() {
 
 /**
  * 保存されたテーマ設定を取得
- * @returns {string} 保存されたテーマ、なければ "auto"
+ * @returns {ThemePreference} 保存されたテーマ、なければ "auto"
  */
 function getSavedTheme() {
   try {
-    return localStorage.getItem(STORAGE_KEY) || THEMES.AUTO;
+    const saved = localStorage.getItem(STORAGE_KEY);
+    // 不正な値が保存されている場合はデフォルトに戻す
+    if (saved && VALID_THEMES.has(saved)) {
+      return saved;
+    }
+    return THEMES.AUTO;
   } catch {
     return THEMES.AUTO;
   }
@@ -36,7 +82,7 @@ function getSavedTheme() {
 
 /**
  * テーマ設定を保存
- * @param {string} theme - 保存するテーマ
+ * @param {ThemePreference} theme - 保存するテーマ
  */
 function saveTheme(theme) {
   try {
@@ -48,8 +94,8 @@ function saveTheme(theme) {
 
 /**
  * 実際に適用するテーマを決定
- * @param {string} preference - ユーザーのテーマ設定（"light"/"dark"/"auto"）
- * @returns {string} 適用するテーマ（"light" または "dark"）
+ * @param {ThemePreference} preference - ユーザーのテーマ設定
+ * @returns {'light' | 'dark'} 適用するテーマ
  */
 function resolveTheme(preference) {
   if (preference === THEMES.AUTO) {
@@ -60,7 +106,7 @@ function resolveTheme(preference) {
 
 /**
  * テーマをDOMに適用
- * @param {string} theme - 適用するテーマ（"light" または "dark"）
+ * @param {'light' | 'dark'} theme - 適用するテーマ
  */
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
@@ -77,27 +123,21 @@ function initTheme() {
 
 /**
  * テーマ切り替えボタンの状態を更新
- * @param {string} preference - 現在のテーマ設定
+ * @param {ThemePreference} preference - 現在のテーマ設定
  */
 function updateThemeButton(preference) {
   const button = document.getElementById('theme-toggle');
   if (!button) return;
 
-  const icons = {
-    [THEMES.LIGHT]: '\u2600\uFE0F',
-    [THEMES.DARK]: '\uD83C\uDF19',
-    [THEMES.AUTO]: '\uD83D\uDDA5\uFE0F',
-  };
-
-  const labels = {
-    [THEMES.LIGHT]: 'ライトモード',
-    [THEMES.DARK]: 'ダークモード',
-    [THEMES.AUTO]: 'システム設定',
-  };
-
-  button.textContent = icons[preference] || icons[THEMES.AUTO];
-  button.setAttribute('aria-label', labels[preference] || labels[THEMES.AUTO]);
-  button.setAttribute('title', labels[preference] || labels[THEMES.AUTO]);
+  button.textContent = THEME_ICONS[preference] || THEME_ICONS[THEMES.AUTO];
+  button.setAttribute(
+    'aria-label',
+    THEME_LABELS[preference] || THEME_LABELS[THEMES.AUTO],
+  );
+  button.setAttribute(
+    'title',
+    THEME_LABELS[preference] || THEME_LABELS[THEMES.AUTO],
+  );
 }
 
 /**
@@ -105,15 +145,7 @@ function updateThemeButton(preference) {
  */
 function cycleTheme() {
   const currentPreference = getSavedTheme();
-
-  // light → dark → auto → light のサイクル
-  const cycle = {
-    [THEMES.LIGHT]: THEMES.DARK,
-    [THEMES.DARK]: THEMES.AUTO,
-    [THEMES.AUTO]: THEMES.LIGHT,
-  };
-
-  const newPreference = cycle[currentPreference] || THEMES.AUTO;
+  const newPreference = THEME_CYCLE[currentPreference] || THEMES.AUTO;
   const actualTheme = resolveTheme(newPreference);
 
   saveTheme(newPreference);
