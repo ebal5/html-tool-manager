@@ -109,10 +109,9 @@ async def health_check() -> JSONResponse:
     try:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
-            conn.commit()
         health_status["components"]["database"] = "healthy"
     except SQLAlchemyError as e:
-        logger.error("Database health check failed: %s", e)
+        logger.error("Database health check failed: %s", e, exc_info=True)
         health_status["status"] = "unhealthy"
         health_status["components"]["database"] = "unhealthy"
 
