@@ -101,11 +101,14 @@ class ToolRepository:
 
         # 一意のディレクトリとファイルパスを生成
         tool_dir = f"static/tools/{uuid.uuid4()}"
-        os.makedirs(tool_dir, exist_ok=True)
+        # 明示的な権限でディレクトリを作成（owner: rwx, group/other: rx）
+        os.makedirs(tool_dir, mode=0o755, exist_ok=True)
         final_filepath = f"{tool_dir}/index.html"
 
+        # ファイルを作成し、明示的な権限を設定（owner: rw, group/other: r）
         with open(final_filepath, "w", encoding="utf-8") as f:
             f.write(final_html)
+        os.chmod(final_filepath, 0o644)
 
         # DBに保存するモデルのfilepathを更新
         tool_data.filepath = final_filepath
@@ -169,10 +172,11 @@ class ToolRepository:
                 .params(fts_query=fts_match_query)
             )
 
-        # タグ検索条件
+        # タグ検索条件（LIKEワイルドカード文字をエスケープ）
         if parsed_query.get("tag"):
             for tag_query in parsed_query["tag"]:
-                statement = statement.where(cast(Tool.tags, String).like(f"%{tag_query}%"))
+                escaped_tag = self._escape_like_pattern(tag_query)
+                statement = statement.where(cast(Tool.tags, String).like(f"%{escaped_tag}%", escape="\\"))
 
         # ソート順
         if sort == SortOrder.RELEVANCE and fts_query_parts:
@@ -226,12 +230,18 @@ class ToolRepository:
         # これによりDB削除失敗時にファイルだけ消える問題を防ぐ
         if filepath and filepath.startswith("static/tools/"):
             tool_dir = os.path.dirname(filepath)
-            if os.path.exists(tool_dir):
-                try:
-                    shutil.rmtree(tool_dir)
-                except OSError:
-                    # ファイル削除に失敗してもログのみ（DBは既に削除済み）
+            # シンボリックリンク攻撃を防止: 実際のパスがstatic/tools/配下であることを確認
+            try:
+                real_dir = os.path.realpath(tool_dir)
+                expected_base = os.path.realpath("static/tools")
+                if not real_dir.startswith(expected_base + os.sep):
+                    # パストラバーサル攻撃の可能性 - 削除をスキップ
                     pass
+                elif os.path.exists(tool_dir) and os.path.isdir(tool_dir):
+                    shutil.rmtree(tool_dir)
+            except OSError:
+                # ファイル削除に失敗してもログのみ（DBは既に削除済み）
+                pass
 
         return tool
 
