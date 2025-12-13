@@ -66,3 +66,33 @@ def test_tag_suggest_filters_by_query(session: Session, client: TestClient) -> N
 
     # Clean up
     client.delete(f"/api/tools/{created_tool['id']}")
+
+
+def test_tag_suggest_case_insensitive(session: Session, client: TestClient) -> None:
+    """Test that tag suggest filtering is case-insensitive."""
+    # Create a tool with mixed-case tags
+    tool_data = {
+        "name": "Case Test Tool",
+        "description": "A test tool",
+        "tags": ["JavaScript", "TypeScript", "PYTHON"],
+        "html_content": "<html><body>Test</body></html>",
+    }
+    create_response = client.post("/api/tools/", json=tool_data)
+    assert create_response.status_code == 201
+    created_tool = create_response.json()
+
+    # Query with lowercase should match uppercase tags
+    response = client.get("/api/tools/tags/suggest?q=python")
+    assert response.status_code == 200
+    tags = response.json()
+    assert "PYTHON" in tags
+
+    # Query with uppercase should match mixed-case tags
+    response = client.get("/api/tools/tags/suggest?q=SCRIPT")
+    assert response.status_code == 200
+    tags = response.json()
+    assert "JavaScript" in tags
+    assert "TypeScript" in tags
+
+    # Clean up
+    client.delete(f"/api/tools/{created_tool['id']}")

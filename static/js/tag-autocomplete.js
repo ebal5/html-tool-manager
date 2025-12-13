@@ -2,6 +2,9 @@
  * タグオートコンプリート機能
  */
 
+// デバウンス遅延時間（ミリ秒）
+const DEBOUNCE_DELAY_MS = 300;
+
 // 各input要素ごとのデバウンスタイマーを管理
 const debounceTimers = new WeakMap();
 
@@ -70,7 +73,7 @@ function setupTagAutocomplete(input, datalistId) {
     // デバウンス後に候補を取得
     const newTimer = setTimeout(() => {
       fetchTagSuggestions(lastTag, datalist);
-    }, 300);
+    }, DEBOUNCE_DELAY_MS);
     debounceTimers.set(input, newTimer);
   });
 }
