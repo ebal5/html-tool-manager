@@ -170,9 +170,7 @@ class ToolRepository:
         self.session.commit()
         return tool
 
-    def get_tag_suggestions(
-        self, query: str = "", limit: int = 20, max_query_length: int = 50
-    ) -> List[str]:
+    def get_tag_suggestions(self, query: str = "", limit: int = 20, max_query_length: int = 50) -> List[str]:
         """Get tag suggestions based on existing tags.
 
         Args:
