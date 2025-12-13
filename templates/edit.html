@@ -54,7 +54,11 @@
 
     <script src="/static/js/validation.js"></script>
     <script src="/static/js/editor.js"></script>
+    <script src="/static/js/tag-autocomplete.js"></script>
     <script>
+        // タグオートコンプリートを設定
+        setupTagAutocomplete(document.getElementById('tags'), 'tag-suggestions-edit');
+
         const TOOL_PATH_PREFIX = 'static/tools/';
         const toolId = {{ tool_id }};
         const form = document.getElementById('edit-tool-form');

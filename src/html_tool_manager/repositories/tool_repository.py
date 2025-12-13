@@ -169,3 +169,48 @@ class ToolRepository:
         self.session.delete(tool)
         self.session.commit()
         return tool
+
+    @staticmethod
+    def _escape_like_pattern(value: str) -> str:
+        r"""Escape special characters for SQL LIKE pattern.
+
+        SQLAlchemyのcontains/startswith/endswithのautoescape実装に準拠。
+        エスケープ文字として'\'を使用。
+
+        Args:
+            value: The string to escape.
+
+        Returns:
+            Escaped string safe for use in LIKE pattern.
+
+        """
+        # エスケープ文字自体を先にエスケープし、その後ワイルドカード文字をエスケープ
+        return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+    def get_tag_suggestions(self, query: str = "", limit: int = 20) -> List[str]:
+        """Get tag suggestions based on existing tags.
+
+        Args:
+            query: Search query to filter tags (case-insensitive partial match).
+            limit: Maximum number of suggestions to return.
+
+        Returns:
+            List of unique tags matching the query, sorted by frequency (most common first).
+
+        """
+        # SQLiteのjson_each関数を使用してタグを集計
+        # これにより全ツールをメモリに読み込まずにDB側で処理できる
+        # ESCAPE句でワイルドカード文字のエスケープを有効化
+        sql = text("""
+            SELECT tag.value as tag_name, COUNT(*) as tag_count
+            FROM tool, json_each(tool.tags) as tag
+            WHERE LOWER(tag.value) LIKE LOWER(:pattern) ESCAPE '\\'
+            GROUP BY tag.value
+            ORDER BY tag_count DESC, tag_name ASC
+            LIMIT :limit
+        """)
+
+        escaped_query = self._escape_like_pattern(query)
+        pattern = f"%{escaped_query}%" if query else "%"
+        result = self.session.execute(sql, {"pattern": pattern, "limit": limit})
+        return [row[0] for row in result.fetchall()]

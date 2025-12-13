@@ -79,6 +79,7 @@ npx @biomejs/biome check --write static/js/
 | GET | /api/tools/{id} | 詳細取得 |
 | PUT | /api/tools/{id} | 更新 |
 | DELETE | /api/tools/{id} | 削除 |
+| GET | /api/tools/tags/suggest | タグ候補取得（?q=） |
 | POST | /api/tools/export | エクスポート |
 | POST | /api/tools/import | インポート |
 
