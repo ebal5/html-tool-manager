@@ -3,6 +3,24 @@
  * HTML/CSS/JavaScriptのシンタックスハイライト機能を提供
  */
 
+// 定数（HTMLテンプレートから参照）
+// biome-ignore lint/correctness/noUnusedVariables: HTMLテンプレートから参照
+const ACE_LOAD_MAX_RETRIES = 50; // 最大リトライ回数（5秒）
+// biome-ignore lint/correctness/noUnusedVariables: HTMLテンプレートから参照
+const ACE_LOAD_RETRY_INTERVAL_MS = 100; // リトライ間隔
+
+/**
+ * エディタを破棄してリソースを解放
+ * @param {object} editor - Ace Editorインスタンス
+ */
+// biome-ignore lint/correctness/noUnusedVariables: HTMLテンプレートから呼び出される
+function destroyEditor(editor) {
+  if (editor) {
+    editor.session.removeAllListeners('change');
+    editor.destroy();
+  }
+}
+
 /**
  * ツールタイプからAceモードを取得
  * @param {string} toolType - ツールタイプ ('html' | 'react' | '')

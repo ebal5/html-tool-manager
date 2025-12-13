@@ -124,9 +124,13 @@
                     sourceSection.appendChild(textarea);
 
                     // Ace Editorを初期化（ツールタイプに応じたモードで）
-                    function initEditorWithRetry() {
+                    function initEditorWithRetry(retries = 0) {
                         if (typeof ace === 'undefined') {
-                            setTimeout(initEditorWithRetry, 100);
+                            if (retries < ACE_LOAD_MAX_RETRIES) {
+                                setTimeout(() => initEditorWithRetry(retries + 1), ACE_LOAD_RETRY_INTERVAL_MS);
+                            } else {
+                                console.error('Ace Editor failed to load after maximum retries');
+                            }
                             return;
                         }
                         codeEditor = initializeAceEditor('html_content', 'code-editor-edit', tool.tool_type);

@@ -47,10 +47,14 @@
     <script>
         // Ace Editorを初期化
         let codeEditor = null;
-        function initEditor() {
+        function initEditor(retries = 0) {
             // Ace Editorがまだ読み込まれていない場合はリトライ
             if (typeof ace === 'undefined') {
-                setTimeout(initEditor, 100);
+                if (retries < ACE_LOAD_MAX_RETRIES) {
+                    setTimeout(() => initEditor(retries + 1), ACE_LOAD_RETRY_INTERVAL_MS);
+                } else {
+                    console.error('Ace Editor failed to load after maximum retries');
+                }
                 return;
             }
             codeEditor = initializeAceEditor('html_content', 'code-editor');
