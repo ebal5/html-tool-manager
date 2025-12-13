@@ -90,18 +90,3 @@ function initializeAceEditor(textareaId, editorId, toolType = 'html') {
 
   return editor;
 }
-
-/**
- * フォーム送信前にエディタの内容をtextareaに同期
- * @param {object} editor - Ace Editorインスタンス
- * @param {string} textareaId - 対象のtextareaのID
- */
-// biome-ignore lint/correctness/noUnusedVariables: HTMLテンプレートから呼び出される
-function syncEditorToTextarea(editor, textareaId) {
-  if (editor) {
-    const textarea = document.getElementById(textareaId);
-    if (textarea) {
-      textarea.value = editor.getValue();
-    }
-  }
-}

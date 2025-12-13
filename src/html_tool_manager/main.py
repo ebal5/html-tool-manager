@@ -41,7 +41,8 @@ async def add_security_headers(request: Request, call_next: RequestResponseEndpo
         # アプリケーション本体には完全なCSP
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
-            "script-src 'self' https://unpkg.com https://cdn.jsdelivr.net https://cdn.tailwindcss.com 'unsafe-inline' 'unsafe-eval';"
+            "script-src 'self' https://unpkg.com https://cdn.jsdelivr.net "
+            "https://cdn.tailwindcss.com 'unsafe-inline' 'unsafe-eval';"
             "style-src 'self' https://cdn.jsdelivr.net https://cdn.tailwindcss.com 'unsafe-inline'; "
             "img-src 'self' data:; "
             "connect-src 'self' https://cdn.jsdelivr.net; "
