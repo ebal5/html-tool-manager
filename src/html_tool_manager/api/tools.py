@@ -6,8 +6,8 @@ from pydantic import BaseModel
 from sqlmodel import Session
 
 from html_tool_manager.core.db import get_session
-from html_tool_manager.models import ToolCreate, ToolRead
-from html_tool_manager.repositories import SortOrder, ToolRepository
+from html_tool_manager.models import SnapshotType, ToolCreate, ToolRead
+from html_tool_manager.repositories import SnapshotRepository, SortOrder, ToolRepository
 
 from .query_parser import parse_query
 
@@ -120,6 +120,22 @@ def update_tool(tool_id: int, tool_data: ToolCreate, session: Session = Depends(
                 detail="Invalid filepath: path traversal detected",
             )
 
+        # 現在の内容を読み取り、変更がある場合のみスナップショット作成
+        try:
+            with open(filepath, encoding="utf-8") as f:
+                current_content = f.read()
+            # 内容が変更されている場合のみスナップショット作成
+            if current_content != final_html:
+                snapshot_repo = SnapshotRepository(session)
+                snapshot_repo.create_snapshot(
+                    tool_id=tool_id,
+                    html_content=current_content,
+                    snapshot_type=SnapshotType.AUTO,
+                )
+        except FileNotFoundError:
+            # ファイルが存在しない場合はスナップショット作成をスキップ
+            pass
+
         with open(filepath, "w", encoding="utf-8") as f:
             f.write(final_html)
 
@@ -134,11 +150,21 @@ def update_tool(tool_id: int, tool_data: ToolCreate, session: Session = Depends(
 
 @router.delete("/{tool_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_tool(tool_id: int, session: Session = Depends(get_session)) -> None:
-    """Delete a tool."""
+    """Delete a tool and its associated snapshots."""
     repo = ToolRepository(session)
-    tool = repo.delete_tool(tool_id)
+
+    # ツールの存在確認
+    tool = repo.get_tool(tool_id)
     if not tool:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tool not found")
+
+    # 関連スナップショットを先に削除
+    snapshot_repo = SnapshotRepository(session)
+    snapshot_repo.delete_all_by_tool(tool_id)
+
+    # ツールを削除
+    repo.delete_tool(tool_id)
+
     # 204 No Contentのため、レスポンスボディは返さない
     return None
 

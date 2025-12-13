@@ -26,6 +26,14 @@
             <a href="/tools/view/{{ tool_id }}" role="button" class="secondary outline">表示</a>
         </header>
 
+        <!-- タブナビゲーション -->
+        <nav class="tab-navigation">
+            <button type="button" class="tab-btn active" data-tab="edit">編集</button>
+            <button type="button" class="tab-btn" data-tab="history">履歴</button>
+        </nav>
+
+        <!-- 編集タブ -->
+        <div id="edit-tab" class="tab-content">
         <form id="edit-tool-form">
             <label for="name">ツール名 <small>(1-100文字)</small></label>
             <input type="text" id="name" name="name" placeholder="すごいツール" required maxlength="100">
@@ -50,11 +58,24 @@
             <button type="submit" id="submit-btn">更新</button>
         </form>
         <p id="message" style="margin-top: 1rem;"></p>
+        </div>
+
+        <!-- 履歴タブ -->
+        <div id="history-tab" class="tab-content hidden">
+            <div id="snapshot-list-container">
+                <p>履歴タブを選択すると履歴を読み込みます。</p>
+            </div>
+            <div id="diff-viewer" class="hidden">
+                <!-- diff2html が出力する差分表示エリア -->
+            </div>
+            <button type="button" id="close-diff-btn" class="hidden secondary outline" style="margin-top: 1rem;">差分を閉じる</button>
+        </div>
     </article>
 
     <script src="/static/js/validation.js"></script>
     <script src="/static/js/editor.js"></script>
     <script src="/static/js/tag-autocomplete.js"></script>
+    <script src="/static/js/snapshot.js"></script>
     <script>
         // タグオートコンプリートを設定
         setupTagAutocomplete(document.getElementById('tags'), 'tag-suggestions-edit');
@@ -235,5 +256,43 @@
         });
 
         loadToolData();
+
+        // タブ切り替えロジック
+        let historyLoaded = false;
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const tabId = this.dataset.tab;
+
+                // タブボタンのアクティブ状態を切り替え
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+
+                // タブコンテンツの表示を切り替え
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+                document.getElementById(tabId + '-tab').classList.remove('hidden');
+
+                // 履歴タブを初めて開いた時にスナップショットを読み込む
+                if (tabId === 'history' && !historyLoaded) {
+                    fetchSnapshots(toolId, document.getElementById('snapshot-list-container'));
+                    historyLoaded = true;
+                }
+            });
+        });
+
+        // 差分を閉じるボタン
+        document.getElementById('close-diff-btn').addEventListener('click', function() {
+            closeDiffViewer();
+            this.classList.add('hidden');
+        });
+
+        // 差分表示時にボタンを表示する監視
+        const diffViewer = document.getElementById('diff-viewer');
+        const closeDiffBtn = document.getElementById('close-diff-btn');
+        const observer = new MutationObserver(function(mutations) {
+            if (!diffViewer.classList.contains('hidden') && diffViewer.innerHTML.trim() !== '') {
+                closeDiffBtn.classList.remove('hidden');
+            }
+        });
+        observer.observe(diffViewer, { childList: true, subtree: true });
     </script>
 {% endblock %}

@@ -12,6 +12,7 @@ from sqlmodel import text
 from starlette.middleware.base import RequestResponseEndpoint
 from starlette.responses import Response
 
+from html_tool_manager.api.snapshots import router as snapshots_router
 from html_tool_manager.api.tools import router as tools_router
 from html_tool_manager.core.db import create_db_and_tables, engine
 
@@ -68,6 +69,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 app.include_router(tools_router, prefix="/api")
+app.include_router(snapshots_router, prefix="/api")
 
 
 @app.get("/", response_class=HTMLResponse)
