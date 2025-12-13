@@ -203,10 +203,24 @@ class ToolRepository:
         return tool
 
     def delete_tool(self, tool_id: int) -> Optional[Tool]:
-        """Delete a tool."""
+        """Delete a tool and its associated files."""
         tool = self.session.get(Tool, tool_id)
         if not tool:
             return None
+
+        # ファイルとディレクトリを削除
+        filepath = tool.filepath
+        if filepath and filepath.startswith("static/tools/"):
+            import shutil
+
+            tool_dir = os.path.dirname(filepath)
+            if os.path.exists(tool_dir):
+                try:
+                    shutil.rmtree(tool_dir)
+                except OSError:
+                    # ファイル削除に失敗してもDB削除は続行
+                    pass
+
         self.session.delete(tool)
         self.session.commit()
         return tool
