@@ -1,27 +1,24 @@
 """Tests for the tag suggestion endpoint."""
 
 from fastapi.testclient import TestClient
-
-from html_tool_manager.main import app
-
-client = TestClient(app)
+from sqlmodel import Session
 
 
-def test_tag_suggest_returns_empty_list_when_no_tools() -> None:
+def test_tag_suggest_returns_empty_list_when_no_tools(session: Session, client: TestClient) -> None:
     """Test that tag suggest returns empty list when no tools exist."""
     response = client.get("/api/tools/tags/suggest")
     assert response.status_code == 200
     assert isinstance(response.json(), list)
 
 
-def test_tag_suggest_with_query_parameter() -> None:
+def test_tag_suggest_with_query_parameter(session: Session, client: TestClient) -> None:
     """Test that tag suggest accepts query parameter."""
     response = client.get("/api/tools/tags/suggest?q=test")
     assert response.status_code == 200
     assert isinstance(response.json(), list)
 
 
-def test_tag_suggest_returns_tags_from_created_tool() -> None:
+def test_tag_suggest_returns_tags_from_created_tool(session: Session, client: TestClient) -> None:
     """Test that tag suggest returns tags from created tools."""
     # Create a tool with tags
     tool_data = {
@@ -46,7 +43,7 @@ def test_tag_suggest_returns_tags_from_created_tool() -> None:
     client.delete(f"/api/tools/{created_tool['id']}")
 
 
-def test_tag_suggest_filters_by_query() -> None:
+def test_tag_suggest_filters_by_query(session: Session, client: TestClient) -> None:
     """Test that tag suggest filters tags by query."""
     # Create a tool with specific tags
     tool_data = {
