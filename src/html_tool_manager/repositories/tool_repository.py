@@ -35,6 +35,7 @@ def _escape_fts5_term(term: str) -> str:
 
     Returns:
         Escaped term safe for FTS5 query, with wildcard suffix.
+        Returns empty string for invalid terms (empty, incomplete field prefix, etc.).
 
     """
     # 空文字列や空白のみの場合はスキップ
@@ -48,6 +49,11 @@ def _escape_fts5_term(term: str) -> str:
     # 既に末尾が * の場合は除去（後で追加するため）
     term = term.rstrip("*")
     if not term:
+        return ""
+
+    # 不完全なフィールドプレフィックス（例: "tag:", "name:"）をスキップ
+    # これらはFTS5でカラム指定子として解釈されエラーの原因となる
+    if term.endswith(":") and term[:-1].isalpha():
         return ""
 
     # ダブルクォートをエスケープ
