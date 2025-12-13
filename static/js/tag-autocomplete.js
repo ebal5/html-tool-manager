@@ -2,7 +2,8 @@
  * タグオートコンプリート機能
  */
 
-let tagSuggestDebounceTimer;
+// 各input要素ごとのデバウンスタイマーを管理
+const debounceTimers = new WeakMap();
 
 /**
  * タグ候補を取得してdatalistを更新
@@ -55,7 +56,10 @@ function setupTagAutocomplete(input, datalistId) {
   fetchTagSuggestions('', datalist);
 
   input.addEventListener('input', () => {
-    clearTimeout(tagSuggestDebounceTimer);
+    const currentTimer = debounceTimers.get(input);
+    if (currentTimer) {
+      clearTimeout(currentTimer);
+    }
 
     const value = input.value;
 
@@ -63,16 +67,10 @@ function setupTagAutocomplete(input, datalistId) {
     const tags = value.split(',');
     const lastTag = tags[tags.length - 1].trim();
 
-    // 最後のタグが空でない場合のみ候補を取得
-    if (lastTag.length > 0) {
-      tagSuggestDebounceTimer = setTimeout(() => {
-        fetchTagSuggestions(lastTag, datalist);
-      }, 300);
-    } else {
-      // 空の場合は全タグを表示
-      tagSuggestDebounceTimer = setTimeout(() => {
-        fetchTagSuggestions('', datalist);
-      }, 300);
-    }
+    // デバウンス後に候補を取得
+    const newTimer = setTimeout(() => {
+      fetchTagSuggestions(lastTag, datalist);
+    }, 300);
+    debounceTimers.set(input, newTimer);
   });
 }
