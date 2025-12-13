@@ -1,3 +1,4 @@
+import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Any
@@ -6,12 +7,15 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import text
 from starlette.middleware.base import RequestResponseEndpoint
 from starlette.responses import Response
 
 from html_tool_manager.api.tools import router as tools_router
 from html_tool_manager.core.db import create_db_and_tables, engine
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -105,8 +109,10 @@ async def health_check() -> JSONResponse:
     try:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
+            conn.commit()
         health_status["components"]["database"] = "healthy"
-    except Exception:
+    except SQLAlchemyError as e:
+        logger.error("Database health check failed: %s", e)
         health_status["status"] = "unhealthy"
         health_status["components"]["database"] = "unhealthy"
 

@@ -3,6 +3,7 @@
 from unittest.mock import MagicMock, patch
 
 from fastapi.testclient import TestClient
+from sqlalchemy.exc import OperationalError
 
 from html_tool_manager.main import app
 
@@ -37,7 +38,7 @@ def test_health_check_database_healthy() -> None:
 def test_health_check_database_error_returns_503() -> None:
     """Test that health check returns 503 when database is unhealthy."""
     mock_engine = MagicMock()
-    mock_engine.connect.side_effect = Exception("Database connection failed")
+    mock_engine.connect.side_effect = OperationalError("Database connection failed", params=None, orig=None)
 
     with patch("html_tool_manager.main.engine", mock_engine):
         response = client.get("/health")
