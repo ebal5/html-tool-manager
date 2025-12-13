@@ -106,5 +106,17 @@ function initializeAceEditor(textareaId, editorId, toolType = 'html') {
     textarea.value = editor.getValue();
   });
 
+  // Ctrl+S: フォーム送信
+  editor.commands.addCommand({
+    name: 'save',
+    bindKey: { win: 'Ctrl-S', mac: 'Cmd-S' },
+    exec: () => {
+      const form = document.querySelector('form');
+      if (form) {
+        form.requestSubmit();
+      }
+    },
+  });
+
   return editor;
 }
