@@ -3,6 +3,11 @@
 {% block title %}Create New Tool - HTML Tool Manager{% endblock %}
 
 {% block content %}
+    <!-- Ace Editor CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/ace-builds@1.32.6/src-min-noconflict/ace.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ace-builds@1.32.6/src-min-noconflict/mode-html.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ace-builds@1.32.6/src-min-noconflict/theme-monokai.min.js"></script>
+
     <article>
         <header>
             <h2>新規ツール作成</h2>
@@ -37,7 +42,14 @@
     </article>
 
     <script src="/static/js/validation.js"></script>
+    <script src="/static/js/editor.js"></script>
     <script>
+        // Ace Editorを初期化
+        let codeEditor = null;
+        document.addEventListener('DOMContentLoaded', function() {
+            codeEditor = initializeAceEditor('html_content', 'code-editor');
+        });
+
         // エラーメッセージを安全に表示するヘルパー関数
         function showError(messageDiv, errorText) {
             messageDiv.innerHTML = '';

@@ -3,6 +3,11 @@
 {% block title %}Edit Tool - HTML Tool Manager{% endblock %}
 
 {% block content %}
+    <!-- Ace Editor CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/ace-builds@1.32.6/src-min-noconflict/ace.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ace-builds@1.32.6/src-min-noconflict/mode-html.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ace-builds@1.32.6/src-min-noconflict/theme-monokai.min.js"></script>
+
     <style>
         .edit-header {
             display: flex;
@@ -47,6 +52,7 @@
     </article>
 
     <script src="/static/js/validation.js"></script>
+    <script src="/static/js/editor.js"></script>
     <script>
         const TOOL_PATH_PREFIX = 'static/tools/';
         const toolId = {{ tool_id }};
@@ -61,6 +67,7 @@
 
         let originalFilepath = '';
         let isPastedContent = false;
+        let codeEditor = null;
 
         // エラーメッセージを安全に表示するヘルパー関数
         function showError(errorText) {
@@ -109,6 +116,9 @@
 
                     sourceSection.appendChild(label);
                     sourceSection.appendChild(textarea);
+
+                    // Ace Editorを初期化
+                    codeEditor = initializeAceEditor('html_content', 'code-editor-edit');
                 } else {
                     // Display a read-only filepath (XSS対策: DOM APIで構築)
                     sourceSection.innerHTML = '';
