@@ -166,7 +166,7 @@ class SnapshotRepository:
 
         if old_ids:
             delete_statement = delete(ToolSnapshot).where(ToolSnapshot.id.in_(old_ids))  # type: ignore[union-attr]
-            self.session.exec(delete_statement)  # type: ignore[call-overload]
+            self.session.exec(delete_statement)
             self.session.commit()
 
     def delete_all_by_tool(self, tool_id: int) -> int:
@@ -183,7 +183,7 @@ class SnapshotRepository:
         if count == 0:
             return 0
 
-        delete_statement = delete(ToolSnapshot).where(ToolSnapshot.tool_id == tool_id)
-        self.session.exec(delete_statement)  # type: ignore[call-overload]
+        delete_statement = delete(ToolSnapshot).where(ToolSnapshot.tool_id == tool_id)  # type: ignore[arg-type]
+        self.session.exec(delete_statement)
         self.session.commit()
         return count
