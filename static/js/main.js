@@ -106,16 +106,49 @@ document.addEventListener('DOMContentLoaded', () => {
         typeCell.appendChild(typeBadge);
 
         const actionsCell = document.createElement('td');
-        actionsCell.innerHTML = `<div class="action-grid">
-                    <a href="/tools/view/${tool.id}" role="button" class="secondary outline">使用</a>
-                    <details class="dropdown">
-                        <summary role="button" class="contrast outline">⋮</summary>
-                        <ul style="position: absolute; z-index: 1;">
-                            <li><a href="/tools/edit/${tool.id}">編集</a></li>
-                            <li><a href="#" class="delete-tool-btn" data-tool-id="${tool.id}">削除</a></li>
-                        </ul>
-                    </details>
-                </div>`;
+        // XSS対策: DOM APIで安全に要素を構築
+        const actionDiv = document.createElement('div');
+        actionDiv.className = 'action-grid';
+
+        const viewLink = document.createElement('a');
+        viewLink.href = `/tools/view/${tool.id}`;
+        viewLink.setAttribute('role', 'button');
+        viewLink.className = 'secondary outline';
+        viewLink.textContent = '使用';
+
+        const dropdown = document.createElement('details');
+        dropdown.className = 'dropdown';
+
+        const summary = document.createElement('summary');
+        summary.setAttribute('role', 'button');
+        summary.className = 'contrast outline';
+        summary.textContent = '⋮';
+
+        const ul = document.createElement('ul');
+        ul.style.position = 'absolute';
+        ul.style.zIndex = '1';
+
+        const editLi = document.createElement('li');
+        const editLink = document.createElement('a');
+        editLink.href = `/tools/edit/${tool.id}`;
+        editLink.textContent = '編集';
+        editLi.appendChild(editLink);
+
+        const deleteLi = document.createElement('li');
+        const deleteLink = document.createElement('a');
+        deleteLink.href = '#';
+        deleteLink.className = 'delete-tool-btn';
+        deleteLink.dataset.toolId = tool.id;
+        deleteLink.textContent = '削除';
+        deleteLi.appendChild(deleteLink);
+
+        ul.appendChild(editLi);
+        ul.appendChild(deleteLi);
+        dropdown.appendChild(summary);
+        dropdown.appendChild(ul);
+        actionDiv.appendChild(viewLink);
+        actionDiv.appendChild(dropdown);
+        actionsCell.appendChild(actionDiv);
 
         tr.appendChild(checkboxCell);
         tr.appendChild(nameCell);
