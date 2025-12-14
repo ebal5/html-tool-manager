@@ -198,10 +198,10 @@ async def import_tools(file: UploadFile = File(...), session: Session = Depends(
                 status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
                 detail=f"File too large. Maximum size is {MAX_IMPORT_FILE_SIZE // (1024 * 1024)}MB.",
             )
-    contents = bytes(contents)
+    contents_bytes = bytes(contents)
 
     try:
-        tools_to_import = msgpack.unpackb(contents, raw=False)
+        tools_to_import = msgpack.unpackb(contents_bytes, raw=False)
     except (msgpack.UnpackException, ValueError) as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid MessagePack file: {e}")
 
