@@ -17,6 +17,7 @@
             </ul>
             <ul>
                 <li><a href="/">ホーム</a></li>
+                <li><a href="/templates">テンプレート</a></li>
                 <li><a href="/tools/create">新規作成</a></li>
                 <li>
                     <button id="theme-toggle" class="outline secondary" aria-label="テーマ切り替え" title="テーマ切り替え"></button>
@@ -26,6 +27,52 @@
         <hr>
         {% block content %}{% endblock %}
     </main>
+    <!-- コマンドパレット -->
+    <dialog id="command-palette" aria-labelledby="command-palette-title">
+        <article>
+            <header>
+                <button type="button" aria-label="閉じる" data-close-modal rel="prev">&times;</button>
+                <h3 id="command-palette-title">コマンドパレット</h3>
+            </header>
+            <input type="search"
+                   id="command-palette-search"
+                   placeholder="ツールを検索..."
+                   autocomplete="off"
+                   aria-describedby="command-palette-hint">
+            <small id="command-palette-hint">矢印キーで選択、Enterで実行、Escで閉じる</small>
+            <ul id="command-palette-results" role="listbox" aria-label="検索結果"></ul>
+        </article>
+    </dialog>
+    <!-- ヘルプモーダル -->
+    <dialog id="help-modal" aria-labelledby="help-modal-title">
+        <article>
+            <header>
+                <button type="button" aria-label="閉じる" data-close-modal rel="prev">&times;</button>
+                <h3 id="help-modal-title">キーボードショートカット</h3>
+            </header>
+            <table>
+                <thead>
+                    <tr><th>キー</th><th>機能</th></tr>
+                </thead>
+                <tbody id="shortcut-list">
+                    <tr><td><kbd class="modifier-key">Ctrl</kbd>+<kbd>K</kbd></td><td>コマンドパレット</td></tr>
+                    <tr><td><kbd class="modifier-key">Ctrl</kbd>+<kbd>N</kbd></td><td>新規作成</td></tr>
+                    <tr><td><kbd class="modifier-key">Ctrl</kbd>+<kbd>E</kbd></td><td>編集</td></tr>
+                    <tr><td><kbd class="modifier-key">Ctrl</kbd>+<kbd>S</kbd></td><td>保存</td></tr>
+                    <tr><td><kbd class="modifier-key">Ctrl</kbd>+<kbd>/</kbd></td><td>このヘルプを表示</td></tr>
+                    <tr><td><kbd>Esc</kbd></td><td>モーダルを閉じる</td></tr>
+                </tbody>
+            </table>
+            <footer>
+                <small>ショートカットはフォーム入力中は一部無効になります</small>
+            </footer>
+        </article>
+    </dialog>
+    <script src="https://cdn.jsdelivr.net/npm/hotkeys-js@3.13.15/dist/hotkeys.min.js"
+            integrity="sha384-/wcmNn82EKPqidpArUUINSxpunohWPJ9y9sn+NTHmAyzY4Hu62pWvcle5xbmfMwh"
+            crossorigin="anonymous"></script>
+    <script src="/static/js/command-palette.js"></script>
+    <script src="/static/js/keyboard-shortcuts.js"></script>
     <script src="/static/js/main.js"></script>
 </body>
 </html>

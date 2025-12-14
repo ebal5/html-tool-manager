@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UUID生成</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .panel {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        button {
+            padding: 12px 24px;
+            font-size: 14px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background: #545b62;
+        }
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+        select, input[type="number"] {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        input[type="number"] {
+            width: 70px;
+        }
+        .uuid-list {
+            margin-top: 20px;
+        }
+        .uuid-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            transition: background 0.2s;
+        }
+        .uuid-item:hover {
+            background: #e9ecef;
+        }
+        .uuid-value {
+            flex: 1;
+            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+            font-size: 14px;
+            word-break: break-all;
+        }
+        .uuid-copy {
+            padding: 6px 12px;
+            font-size: 12px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .uuid-copy:hover {
+            background: #218838;
+        }
+        .uuid-copy.copied {
+            background: #6c757d;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        .format-options {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        .format-option {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .message {
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 15px;
+            text-align: center;
+            background: #d4edda;
+            color: #155724;
+        }
+    </style>
+</head>
+<body>
+    <h1>UUID生成</h1>
+
+    <div class="panel">
+        <div class="controls">
+            <button class="btn-primary" onclick="generateUUIDs()">生成</button>
+            <label>
+                個数:
+                <input type="number" id="count" value="1" min="1" max="100">
+            </label>
+            <button class="btn-secondary" onclick="copyAll()">すべてコピー</button>
+            <button class="btn-danger" onclick="clearAll()">クリア</button>
+        </div>
+
+        <div class="format-options">
+            <label class="format-option">
+                <input type="radio" name="format" value="standard" checked>
+                標準 (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
+            </label>
+            <label class="format-option">
+                <input type="radio" name="format" value="uppercase">
+                大文字
+            </label>
+            <label class="format-option">
+                <input type="radio" name="format" value="nohyphen">
+                ハイフンなし
+            </label>
+        </div>
+
+        <div class="uuid-list" id="uuidList">
+            <div class="empty-state">
+                「生成」ボタンをクリックしてUUIDを生成してください
+            </div>
+        </div>
+
+        <div id="message" class="message" style="display: none;"></div>
+    </div>
+
+    <script>
+        let uuids = [];
+
+        function generateUUID() {
+            // crypto.randomUUID()が使える場合はそれを使用
+            if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+                return crypto.randomUUID();
+            }
+
+            // フォールバック: 手動でUUID v4を生成
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0;
+                const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
+        function formatUUID(uuid) {
+            const format = document.querySelector('input[name="format"]:checked').value;
+            switch (format) {
+                case 'uppercase':
+                    return uuid.toUpperCase();
+                case 'nohyphen':
+                    return uuid.replace(/-/g, '');
+                default:
+                    return uuid;
+            }
+        }
+
+        function generateUUIDs() {
+            const count = parseInt(document.getElementById('count').value, 10) || 1;
+            const clampedCount = Math.min(Math.max(count, 1), 100);
+
+            for (let i = 0; i < clampedCount; i++) {
+                uuids.push(generateUUID());
+            }
+
+            renderUUIDs();
+            showMessage(`${clampedCount}個のUUIDを生成しました`);
+        }
+
+        function renderUUIDs() {
+            const list = document.getElementById('uuidList');
+
+            if (uuids.length === 0) {
+                list.innerHTML = '<div class="empty-state">「生成」ボタンをクリックしてUUIDを生成してください</div>';
+                return;
+            }
+
+            list.innerHTML = uuids.map((uuid, index) => `
+                <div class="uuid-item">
+                    <span class="uuid-value">${formatUUID(uuid)}</span>
+                    <button class="uuid-copy" onclick="copyUUID(${index}, this)">コピー</button>
+                </div>
+            `).join('');
+        }
+
+        function copyUUID(index, button) {
+            const uuid = formatUUID(uuids[index]);
+            navigator.clipboard.writeText(uuid).then(() => {
+                button.textContent = 'コピー済';
+                button.classList.add('copied');
+                setTimeout(() => {
+                    button.textContent = 'コピー';
+                    button.classList.remove('copied');
+                }, 1500);
+            });
+        }
+
+        function copyAll() {
+            if (uuids.length === 0) {
+                showMessage('コピーするUUIDがありません');
+                return;
+            }
+
+            const text = uuids.map(formatUUID).join('\n');
+            navigator.clipboard.writeText(text).then(() => {
+                showMessage('すべてのUUIDをコピーしました');
+            });
+        }
+
+        function clearAll() {
+            uuids = [];
+            renderUUIDs();
+        }
+
+        function showMessage(text) {
+            const msg = document.getElementById('message');
+            msg.textContent = text;
+            msg.style.display = 'block';
+            setTimeout(() => {
+                msg.style.display = 'none';
+            }, 2000);
+        }
+
+        // フォーマット変更時に再描画
+        document.querySelectorAll('input[name="format"]').forEach(input => {
+            input.addEventListener('change', renderUUIDs);
+        });
+    </script>
+</body>
+</html>
