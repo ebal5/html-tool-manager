@@ -1,8 +1,10 @@
 import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import Any
+from pathlib import Path
+from typing import Any, Optional
 
+from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -12,20 +14,68 @@ from sqlmodel import text
 from starlette.middleware.base import RequestResponseEndpoint
 from starlette.responses import Response
 
+from html_tool_manager.api.backup import router as backup_router
 from html_tool_manager.api.tools import router as tools_router
-from html_tool_manager.core.db import create_db_and_tables, engine
+from html_tool_manager.core.backup import BackupService
+from html_tool_manager.core.config import backup_settings
+from html_tool_manager.core.db import DATABASE_URL, create_db_and_tables, engine
 
 logger = logging.getLogger(__name__)
+
+# Global scheduler instance
+scheduler: Optional[BackgroundScheduler] = None
+
+
+def _get_db_path_from_url(url: str) -> Path:
+    """Extract database file path from SQLite URL."""
+    # DATABASE_URL format: "sqlite:///./tools.db"
+    if url.startswith("sqlite:///"):
+        return Path(url.replace("sqlite:///", ""))
+    return Path("tools.db")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Manage application lifecycle events."""
-    # 起動時
+    global scheduler
+
+    # 起動時: DB初期化
     create_db_and_tables()
+
+    # バックアップサービス初期化
+    db_path = _get_db_path_from_url(DATABASE_URL)
+    backup_service = BackupService(
+        db_path=str(db_path),
+        backup_dir=backup_settings.backup_dir,
+        max_generations=backup_settings.backup_max_generations,
+    )
+    app.state.backup_service = backup_service
+
+    # 起動時バックアップ
+    if backup_settings.backup_on_startup:
+        try:
+            backup_service.create_backup()
+            logger.info("Startup backup created successfully")
+        except Exception as e:
+            logger.error("Failed to create startup backup: %s", e)
+
+    # スケジューラ起動
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(
+        backup_service.create_backup,
+        "interval",
+        hours=backup_settings.backup_interval_hours,
+        id="scheduled_backup",
+    )
+    scheduler.start()
+    logger.info("Backup scheduler started (interval: %d hours)", backup_settings.backup_interval_hours)
+
     yield
-    # 終了時
-    pass
+
+    # 終了時: スケジューラ停止
+    if scheduler and scheduler.running:
+        scheduler.shutdown()
+        logger.info("Backup scheduler stopped")
 
 
 app = FastAPI(lifespan=lifespan)
@@ -68,6 +118,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 app.include_router(tools_router, prefix="/api")
+app.include_router(backup_router, prefix="/api")
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -92,6 +143,12 @@ async def edit_tool_page(request: Request, tool_id: int) -> HTMLResponse:
 async def view_tool_page(request: Request, tool_id: int) -> HTMLResponse:
     """Render the tool viewer page."""
     return templates.TemplateResponse("tool_viewer.html", {"request": request, "tool_id": tool_id})
+
+
+@app.get("/backup", response_class=HTMLResponse)
+async def backup_page(request: Request) -> HTMLResponse:
+    """Render the backup management page."""
+    return templates.TemplateResponse("backup.html", {"request": request})
 
 
 @app.get("/health", response_class=JSONResponse)
