@@ -135,6 +135,9 @@ def update_tool(tool_id: int, tool_data: ToolCreate, session: Session = Depends(
         except FileNotFoundError:
             # ファイルが存在しない場合はスナップショット作成をスキップ
             pass
+        except ValueError:
+            # コンテンツサイズが上限を超える場合はスナップショット作成をスキップ
+            pass
 
         with open(filepath, "w", encoding="utf-8") as f:
             f.write(final_html)

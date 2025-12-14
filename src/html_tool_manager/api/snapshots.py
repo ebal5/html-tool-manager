@@ -89,12 +89,18 @@ def create_snapshot(
     current_content = _read_current_content(tool.filepath)
 
     snapshot_repo = SnapshotRepository(session)
-    snapshot = snapshot_repo.create_snapshot(
-        tool_id=tool_id,
-        html_content=current_content,
-        snapshot_type=snapshot_data.snapshot_type or SnapshotType.MANUAL,
-        name=snapshot_data.name,
-    )
+    try:
+        snapshot = snapshot_repo.create_snapshot(
+            tool_id=tool_id,
+            html_content=current_content,
+            snapshot_type=snapshot_data.snapshot_type or SnapshotType.MANUAL,
+            name=snapshot_data.name,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=str(e),
+        )
 
     return SnapshotRead.model_validate(snapshot)
 
@@ -141,7 +147,8 @@ def restore_snapshot(
 ) -> ToolRead:
     """Restore a tool to a previous snapshot.
 
-    This creates a new snapshot of the current content before restoring.
+    This creates a new snapshot of the current content after successful restoration.
+    The order ensures atomicity: file write first, then DB commit.
     """
     tool_repo = ToolRepository(session)
     tool = tool_repo.get_tool(tool_id)
@@ -153,16 +160,7 @@ def restore_snapshot(
     if not snapshot:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Snapshot not found")
 
-    # Read current content and create a snapshot before restoring
-    current_content = _read_current_content(tool.filepath)
-    snapshot_repo.create_snapshot(
-        tool_id=tool_id,
-        html_content=current_content,
-        snapshot_type=SnapshotType.AUTO,
-        name="復元前の自動保存",
-    )
-
-    # Validate filepath
+    # Validate filepath first
     filepath = tool.filepath
     if not filepath or ".." in filepath or not filepath.startswith("static/tools/"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid filepath")
@@ -176,7 +174,10 @@ def restore_snapshot(
             detail="Invalid filepath: path traversal detected",
         )
 
-    # Restore content - handle React template if needed
+    # Read current content before overwriting (for backup snapshot)
+    current_content = _read_current_content(tool.filepath)
+
+    # Prepare content to write - handle React template if needed
     content_to_write = snapshot.html_content
     if tool.tool_type == ToolType.REACT:
         # Check if snapshot content is raw JSX (not wrapped in template)
@@ -184,6 +185,7 @@ def restore_snapshot(
         if "react.production.min.js" not in snapshot.html_content:
             content_to_write = generate_react_html(snapshot.html_content)
 
+    # Write file first - if this fails, no DB changes are made
     try:
         with open(filepath, "w", encoding="utf-8") as f:
             f.write(content_to_write)
@@ -197,6 +199,18 @@ def restore_snapshot(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to write file: {e}",
         )
+
+    # File write succeeded - now create backup snapshot of the previous content
+    try:
+        snapshot_repo.create_snapshot(
+            tool_id=tool_id,
+            html_content=current_content,
+            snapshot_type=SnapshotType.AUTO,
+            name="復元前の自動保存",
+        )
+    except ValueError:
+        # Content too large for snapshot - restoration succeeded but backup skipped
+        pass
 
     # Refresh tool and return
     session.refresh(tool)

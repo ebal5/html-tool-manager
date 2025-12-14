@@ -12,6 +12,7 @@ from .tool import CONTROL_CHARS_PATTERN
 # バリデーション定数
 SNAPSHOT_NAME_MAX_LENGTH = 100
 MAX_SNAPSHOTS_PER_TOOL = 20
+MAX_CONTENT_SIZE_BYTES = 10 * 1024 * 1024  # 10MB
 
 
 class SnapshotType(str, Enum):
