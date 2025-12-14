@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -51,7 +52,7 @@ class AddTemplateRequest(BaseModel):
 
 
 # --- Helper Functions ---
-def load_templates_data() -> dict:
+def load_templates_data() -> dict[str, Any]:
     """Load templates.json data.
 
     Returns:
@@ -68,7 +69,8 @@ def load_templates_data() -> dict:
         )
     try:
         with open(TEMPLATES_JSON, encoding="utf-8") as f:
-            return json.load(f)
+            data: dict[str, Any] = json.load(f)
+            return data
     except json.JSONDecodeError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -102,11 +104,13 @@ def validate_template_file_path(file_path: str) -> Path:
     try:
         real_path = template_file.resolve()
         real_base = TEMPLATES_DIR.resolve()
-        if not str(real_path).startswith(str(real_base) + "/"):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid template file path: path traversal detected",
-            )
+        # relative_toはクロスプラットフォーム対応で堅牢
+        real_path.relative_to(real_base)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid template file path: path traversal detected",
+        )
     except OSError:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
