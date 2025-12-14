@@ -187,13 +187,18 @@ async def import_tools(file: UploadFile = File(...), session: Session = Depends(
     if file.content_type != "application/octet-stream":
         raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail="Unsupported file type.")
 
-    # ファイルサイズの制限を確認
-    contents = await file.read()
-    if len(contents) > MAX_IMPORT_FILE_SIZE:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"File too large. Maximum size is {MAX_IMPORT_FILE_SIZE // (1024 * 1024)}MB.",
-        )
+    # ファイルサイズの制限を確認（DoS対策: ストリーミングでサイズをチェック）
+    # 一度にメモリに読み込まず、チャンクごとにチェックすることでOOMを防止
+    contents = bytearray()
+    chunk_size = 8192  # 8KB
+    while chunk := await file.read(chunk_size):
+        contents.extend(chunk)
+        if len(contents) > MAX_IMPORT_FILE_SIZE:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"File too large. Maximum size is {MAX_IMPORT_FILE_SIZE // (1024 * 1024)}MB.",
+            )
+    contents = bytes(contents)
 
     try:
         tools_to_import = msgpack.unpackb(contents, raw=False)
