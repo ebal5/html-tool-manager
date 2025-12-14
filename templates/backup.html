@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+
+{% block title %}バックアップ管理 - HTML Tool Manager{% endblock %}
+
+{% block content %}
+<h2>データベースバックアップ</h2>
+
+<div id="message-container" style="display: none; margin-bottom: 1rem;"></div>
+
+<div style="margin-bottom: 1.5rem;">
+    <button id="create-backup-btn" class="primary">
+        手動バックアップを作成
+    </button>
+</div>
+
+<h3>バックアップ一覧</h3>
+<div id="backup-list-container">
+    <p aria-busy="true">読み込み中...</p>
+</div>
+
+<script src="/static/js/backup.js"></script>
+{% endblock %}

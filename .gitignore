@@ -147,3 +147,10 @@ cython_debug/
 static/tools/
 sql_app.db
 sql_app.db-journal
+tools.db
+tools.db-journal
+tools.db-wal
+tools.db-shm
+
+# Backup files
+backups/
