@@ -96,6 +96,14 @@ class BackupService:
             with sqlite3.connect(str(self.db_path)) as src:
                 with sqlite3.connect(str(backup_path)) as dst:
                     src.backup(dst)
+
+            # Verify backup integrity
+            with sqlite3.connect(str(backup_path)) as conn:
+                result = conn.execute("PRAGMA integrity_check").fetchone()
+                if result[0] != "ok":
+                    backup_path.unlink()
+                    raise BackupError(f"Backup integrity check failed: {result[0]}")
+
             logger.info("Created backup: %s", filename)
 
             # Get backup info before rotation
@@ -170,12 +178,16 @@ class BackupService:
         # Create a temporary backup of current database before restore
         temp_backup_path = self.db_path.with_suffix(".db.restore_backup")
         try:
-            # Backup current database
+            # Backup current database using SQLite backup API
             if self.db_path.exists():
-                shutil.copy2(self.db_path, temp_backup_path)
+                with sqlite3.connect(str(self.db_path)) as src:
+                    with sqlite3.connect(str(temp_backup_path)) as dst:
+                        src.backup(dst)
 
-            # Restore from backup
-            shutil.copy2(backup_path, self.db_path)
+            # Restore from backup using SQLite backup API
+            with sqlite3.connect(str(backup_path)) as src:
+                with sqlite3.connect(str(self.db_path)) as dst:
+                    src.backup(dst)
             logger.info("Restored database from backup: %s", filename)
 
             # Remove temporary backup on success
@@ -183,14 +195,16 @@ class BackupService:
                 temp_backup_path.unlink()
 
             return True
-        except OSError as e:
+        except (OSError, sqlite3.Error) as e:
             # Attempt to restore from temporary backup on failure
             logger.error("Failed to restore backup: %s", e)
             if temp_backup_path.exists():
                 try:
-                    shutil.copy2(temp_backup_path, self.db_path)
+                    with sqlite3.connect(str(temp_backup_path)) as src:
+                        with sqlite3.connect(str(self.db_path)) as dst:
+                            src.backup(dst)
                     temp_backup_path.unlink()
-                except OSError:
+                except (OSError, sqlite3.Error):
                     pass
             raise BackupError(f"Failed to restore backup: {e}") from e
 
