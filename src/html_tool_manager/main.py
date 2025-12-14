@@ -95,9 +95,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     yield
 
-    # 終了時: スケジューラ停止
+    # 終了時: スケジューラ停止（実行中のジョブ完了を待機）
     if hasattr(app.state, "scheduler") and app.state.scheduler.running:
-        app.state.scheduler.shutdown()
+        app.state.scheduler.shutdown(wait=True)
         logger.info("Backup scheduler stopped")
 
 

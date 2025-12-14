@@ -94,16 +94,22 @@ def restore_backup(request: Request, filename: str) -> BackupRestoreResponse:
         Information about the restoration.
 
     Note:
-        After restoration, the application may need to be restarted
-        to reflect the changes properly.
+        After restoration, database connections are reset.
+        Please reload the page to see the restored data.
 
     """
     service = _get_backup_service(request)
     try:
         service.restore_backup(filename)
+
+        # Reset database connections to use restored data
+        from html_tool_manager.core.db import engine
+
+        engine.dispose()
+
         return BackupRestoreResponse(
             success=True,
-            message="Database restored successfully. Application restart may be required.",
+            message="Database restored successfully. Please reload the page.",
             restored_from=filename,
         )
     except InvalidFilenameError as e:
