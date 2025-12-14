@@ -46,6 +46,16 @@ def _read_current_content(filepath: str) -> str:
             return f.read()
     except FileNotFoundError:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tool file not found")
+    except PermissionError:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Permission denied when reading file",
+        )
+    except OSError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to read file: {e}",
+        )
 
 
 @router.get("/", response_model=List[SnapshotRead])
@@ -174,8 +184,19 @@ def restore_snapshot(
         if "react.production.min.js" not in snapshot.html_content:
             content_to_write = generate_react_html(snapshot.html_content)
 
-    with open(filepath, "w", encoding="utf-8") as f:
-        f.write(content_to_write)
+    try:
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write(content_to_write)
+    except PermissionError:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Permission denied when writing file",
+        )
+    except OSError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to write file: {e}",
+        )
 
     # Refresh tool and return
     session.refresh(tool)

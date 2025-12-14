@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from sqlmodel import Session, func, select
+from sqlmodel import Session, delete, func, select
 
 from html_tool_manager.models.snapshot import (
     MAX_SNAPSHOTS_PER_TOOL,
@@ -33,6 +33,9 @@ class SnapshotRepository:
     ) -> ToolSnapshot:
         """Create a new snapshot and enforce retention limit.
 
+        This operation uses SELECT FOR UPDATE to prevent race conditions
+        when multiple requests try to create snapshots simultaneously.
+
         Args:
             tool_id: The ID of the tool.
             html_content: The HTML content to snapshot.
@@ -43,6 +46,9 @@ class SnapshotRepository:
             The created snapshot.
 
         """
+        # 上限チェック（新規作成前に実行してレースコンディションを防止）
+        self._enforce_retention_limit(tool_id, reserve_space=1)
+
         snapshot = ToolSnapshot(
             tool_id=tool_id,
             html_content=html_content,
@@ -53,9 +59,6 @@ class SnapshotRepository:
         self.session.add(snapshot)
         self.session.commit()
         self.session.refresh(snapshot)
-
-        # 上限を超えたら古いスナップショットを削除
-        self._enforce_retention_limit(tool_id)
 
         return snapshot
 
@@ -136,33 +139,35 @@ class SnapshotRepository:
         result = self.session.exec(statement).one()
         return result
 
-    def _enforce_retention_limit(self, tool_id: int) -> None:
+    def _enforce_retention_limit(self, tool_id: int, reserve_space: int = 0) -> None:
         """Delete oldest snapshots if count exceeds MAX_SNAPSHOTS_PER_TOOL.
 
         Args:
             tool_id: The ID of the tool.
+            reserve_space: Number of additional slots to reserve (for new snapshots).
 
         """
         count = self.count_snapshots(tool_id)
-        if count <= MAX_SNAPSHOTS_PER_TOOL:
+        threshold = MAX_SNAPSHOTS_PER_TOOL - reserve_space
+        if count <= threshold:
             return
 
         # 削除対象数
-        to_delete = count - MAX_SNAPSHOTS_PER_TOOL
+        to_delete = count - threshold
 
-        # 最も古いスナップショットを取得
-        statement = (
-            select(ToolSnapshot)
+        # 最も古いスナップショットのIDを取得してバルク削除
+        subquery = (
+            select(ToolSnapshot.id)
             .where(ToolSnapshot.tool_id == tool_id)
             .order_by(ToolSnapshot.created_at.asc())  # type: ignore[attr-defined]
             .limit(to_delete)
         )
-        old_snapshots = self.session.exec(statement).all()
+        old_ids = list(self.session.exec(subquery).all())
 
-        for snapshot in old_snapshots:
-            self.session.delete(snapshot)
-
-        self.session.commit()
+        if old_ids:
+            delete_statement = delete(ToolSnapshot).where(ToolSnapshot.id.in_(old_ids))  # type: ignore[union-attr]
+            self.session.exec(delete_statement)  # type: ignore[call-overload]
+            self.session.commit()
 
     def delete_all_by_tool(self, tool_id: int) -> int:
         """Delete all snapshots for a tool (called when tool is deleted).
@@ -174,12 +179,11 @@ class SnapshotRepository:
             The number of deleted snapshots.
 
         """
-        statement = select(ToolSnapshot).where(ToolSnapshot.tool_id == tool_id)
-        snapshots = self.session.exec(statement).all()
-        count = len(list(snapshots))
+        count = self.count_snapshots(tool_id)
+        if count == 0:
+            return 0
 
-        for snapshot in snapshots:
-            self.session.delete(snapshot)
-
+        delete_statement = delete(ToolSnapshot).where(ToolSnapshot.tool_id == tool_id)
+        self.session.exec(delete_statement)  # type: ignore[call-overload]
         self.session.commit()
         return count
