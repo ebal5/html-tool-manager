@@ -8,6 +8,90 @@
   min-width: auto;
 }
 
+/* タブナビゲーション */
+.tab-navigation {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--pico-muted-border-color);
+  padding-bottom: 0.5rem;
+}
+
+.tab-btn {
+  background: none;
+  border: none;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: border-color 0.2s ease;
+}
+
+.tab-btn:hover {
+  border-bottom-color: var(--pico-muted-color);
+}
+
+.tab-btn.active {
+  border-bottom-color: var(--pico-primary);
+  color: var(--pico-primary);
+}
+
+.tab-content.hidden {
+  display: none;
+}
+
+/* スナップショットヘッダー */
+.snapshot-header {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+
+/* スナップショットテーブル */
+.snapshot-table {
+  width: 100%;
+}
+
+.snapshot-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.snapshot-actions button {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+/* スナップショット種類バッジ */
+.snapshot-type-auto {
+  background-color: #6c757d;
+  color: #fff;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+}
+
+.snapshot-type-manual {
+  background-color: #0d6efd;
+  color: #fff;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+}
+
+/* 差分表示エリア */
+#diff-viewer {
+  margin-top: 1rem;
+  border: 1px solid var(--pico-muted-border-color);
+  border-radius: var(--pico-border-radius);
+  padding: 1rem;
+  max-height: 600px;
+  overflow: auto;
+}
+
+#diff-viewer.hidden {
+  display: none;
+}
+
 /* コマンドパレット */
 #command-palette {
   max-width: 600px;

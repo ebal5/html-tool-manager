@@ -2,6 +2,8 @@ from typing import Generator
 
 from sqlmodel import Session, SQLModel, create_engine, text
 
+from html_tool_manager.models.snapshot import ToolSnapshot  # noqa: F401
+
 DATABASE_URL = "sqlite:///./tools.db"
 
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
