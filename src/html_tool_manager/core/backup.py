@@ -203,8 +203,13 @@ class BackupService:
                         with sqlite3.connect(str(self.db_path)) as dst:
                             src.backup(dst)
                     temp_backup_path.unlink()
-                except (OSError, sqlite3.Error):
-                    pass
+                    logger.info("Successfully rolled back to previous database state")
+                except (OSError, sqlite3.Error) as rollback_error:
+                    logger.critical(
+                        "CRITICAL: Failed to rollback database after restore failure. "
+                        "Database may be in inconsistent state. Error: %s",
+                        rollback_error,
+                    )
             raise BackupError(f"Failed to restore backup: {e}") from e
 
     def delete_backup(self, filename: str) -> bool:

@@ -91,6 +91,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         "interval",
         hours=backup_settings.backup_interval_hours,
         id="scheduled_backup",
+        max_instances=1,  # 同時実行を防止
+        coalesce=True,  # 複数のジョブをまとめて実行
     )
     app.state.scheduler.start()
     logger.info("Backup scheduler started (interval: %d hours)", backup_settings.backup_interval_hours)
