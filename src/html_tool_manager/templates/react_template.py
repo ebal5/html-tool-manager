@@ -17,6 +17,12 @@ def generate_react_html(jsx_code: str) -> str:
     # import/export 文を変換
     transformed_code = _transform_imports_exports(jsx_code)
 
+    # XSS対策: </script> をエスケープしてHTMLインジェクションを防止
+    # JavaScript では <\/script> は </script> と同じ文字列として解釈されるが、
+    # HTMLパーサーはscriptタグの終了として認識しない
+    transformed_code = transformed_code.replace("</script>", r"<\/script>")
+    transformed_code = transformed_code.replace("</SCRIPT>", r"<\/SCRIPT>")
+
     return f"""<!DOCTYPE html>
 <html lang="ja">
 <head>
