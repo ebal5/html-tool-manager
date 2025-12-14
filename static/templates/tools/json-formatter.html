@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON整形ツール</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+        .panel {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .panel h2 {
+            font-size: 1rem;
+            margin: 0 0 10px 0;
+            color: #666;
+        }
+        textarea {
+            width: 100%;
+            height: 300px;
+            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+            font-size: 13px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            resize: vertical;
+        }
+        .controls {
+            margin: 15px 0;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        button {
+            padding: 8px 16px;
+            font-size: 14px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background: #545b62;
+        }
+        select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .error {
+            color: #dc3545;
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 10px;
+            display: none;
+        }
+        .success {
+            color: #155724;
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 10px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>JSON整形ツール</h1>
+
+    <div class="controls">
+        <button class="btn-primary" onclick="formatJSON()">整形</button>
+        <button class="btn-secondary" onclick="minifyJSON()">圧縮</button>
+        <button class="btn-secondary" onclick="copyOutput()">コピー</button>
+        <label>
+            インデント:
+            <select id="indent">
+                <option value="2">2スペース</option>
+                <option value="4">4スペース</option>
+                <option value="tab">タブ</option>
+            </select>
+        </label>
+    </div>
+
+    <div class="container">
+        <div class="panel">
+            <h2>入力</h2>
+            <textarea id="input" placeholder='JSONを入力してください...&#10;例: {"name": "value"}'></textarea>
+        </div>
+        <div class="panel">
+            <h2>出力</h2>
+            <textarea id="output" readonly placeholder="整形結果がここに表示されます"></textarea>
+        </div>
+    </div>
+
+    <div id="error" class="error"></div>
+    <div id="success" class="success"></div>
+
+    <script>
+        function showError(message) {
+            const errorEl = document.getElementById('error');
+            const successEl = document.getElementById('success');
+            errorEl.textContent = message;
+            errorEl.style.display = 'block';
+            successEl.style.display = 'none';
+        }
+
+        function showSuccess(message) {
+            const errorEl = document.getElementById('error');
+            const successEl = document.getElementById('success');
+            successEl.textContent = message;
+            successEl.style.display = 'block';
+            errorEl.style.display = 'none';
+        }
+
+        function hideMessages() {
+            document.getElementById('error').style.display = 'none';
+            document.getElementById('success').style.display = 'none';
+        }
+
+        function getIndent() {
+            const indent = document.getElementById('indent').value;
+            return indent === 'tab' ? '\t' : parseInt(indent, 10);
+        }
+
+        function formatJSON() {
+            hideMessages();
+            const input = document.getElementById('input').value.trim();
+            if (!input) {
+                showError('JSONを入力してください');
+                return;
+            }
+
+            try {
+                const parsed = JSON.parse(input);
+                const formatted = JSON.stringify(parsed, null, getIndent());
+                document.getElementById('output').value = formatted;
+                showSuccess('JSONを整形しました');
+            } catch (e) {
+                showError('無効なJSON: ' + e.message);
+            }
+        }
+
+        function minifyJSON() {
+            hideMessages();
+            const input = document.getElementById('input').value.trim();
+            if (!input) {
+                showError('JSONを入力してください');
+                return;
+            }
+
+            try {
+                const parsed = JSON.parse(input);
+                const minified = JSON.stringify(parsed);
+                document.getElementById('output').value = minified;
+                showSuccess('JSONを圧縮しました');
+            } catch (e) {
+                showError('無効なJSON: ' + e.message);
+            }
+        }
+
+        function copyOutput() {
+            const output = document.getElementById('output');
+            if (!output.value) {
+                showError('コピーする内容がありません');
+                return;
+            }
+
+            navigator.clipboard.writeText(output.value).then(() => {
+                showSuccess('クリップボードにコピーしました');
+            }).catch(() => {
+                output.select();
+                document.execCommand('copy');
+                showSuccess('クリップボードにコピーしました');
+            });
+        }
+
+        // リアルタイム整形（入力中に自動整形する場合はコメントアウトを外す）
+        // document.getElementById('input').addEventListener('input', formatJSON);
+    </script>
+</body>
+</html>

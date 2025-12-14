@@ -1,0 +1,113 @@
+{
+  "version": "1.0.0",
+  "templates": [
+    {
+      "id": "json-formatter",
+      "name": "JSON整形ツール",
+      "description": "JSONを整形・検証するツール。インデント調整やエラー表示機能付き。",
+      "category": "transform",
+      "tags": ["JSON", "整形", "変換"],
+      "tool_type": "html",
+      "file": "tools/json-formatter.html"
+    },
+    {
+      "id": "base64-encoder",
+      "name": "Base64エンコード/デコード",
+      "description": "テキストのBase64エンコード・デコードを行うツール。",
+      "category": "transform",
+      "tags": ["Base64", "エンコード", "デコード"],
+      "tool_type": "html",
+      "file": "tools/base64-encoder.html"
+    },
+    {
+      "id": "timestamp-converter",
+      "name": "タイムスタンプ変換",
+      "description": "Unixタイムスタンプと日時の相互変換ツール。",
+      "category": "transform",
+      "tags": ["時刻", "Unix", "日付"],
+      "tool_type": "html",
+      "file": "tools/timestamp-converter.html"
+    },
+    {
+      "id": "uuid-generator",
+      "name": "UUID生成",
+      "description": "UUID (v4) を生成するツール。複数生成やコピー機能付き。",
+      "category": "generate",
+      "tags": ["UUID", "ID", "生成"],
+      "tool_type": "html",
+      "file": "tools/uuid-generator.html"
+    },
+    {
+      "id": "qr-generator",
+      "name": "QRコード生成",
+      "description": "テキストやURLからQRコードを生成するツール。",
+      "category": "generate",
+      "tags": ["QR", "生成", "画像"],
+      "tool_type": "html",
+      "file": "tools/qr-generator.html"
+    },
+    {
+      "id": "hash-generator",
+      "name": "ハッシュ生成",
+      "description": "MD5, SHA-1, SHA-256などのハッシュ値を生成するツール。",
+      "category": "generate",
+      "tags": ["MD5", "SHA256", "ハッシュ"],
+      "tool_type": "html",
+      "file": "tools/hash-generator.html"
+    },
+    {
+      "id": "char-counter",
+      "name": "文字数カウンター",
+      "description": "文字数、単語数、行数をリアルタイムでカウントするツール。",
+      "category": "text",
+      "tags": ["文字数", "カウント", "テキスト"],
+      "tool_type": "html",
+      "file": "tools/char-counter.html"
+    },
+    {
+      "id": "regex-tester",
+      "name": "正規表現テスター",
+      "description": "正規表現のテストとマッチング結果を確認するツール。",
+      "category": "text",
+      "tags": ["正規表現", "テスト", "マッチング"],
+      "tool_type": "html",
+      "file": "tools/regex-tester.html"
+    },
+    {
+      "id": "markdown-preview",
+      "name": "マークダウンプレビュー",
+      "description": "Markdownをリアルタイムでプレビューするツール。",
+      "category": "text",
+      "tags": ["Markdown", "プレビュー", "変換"],
+      "tool_type": "html",
+      "file": "tools/markdown-preview.html"
+    },
+    {
+      "id": "color-picker",
+      "name": "カラーピッカー",
+      "description": "色を選択してHEX、RGB、HSL形式で取得するツール。",
+      "category": "dev",
+      "tags": ["色", "HEX", "RGB"],
+      "tool_type": "html",
+      "file": "tools/color-picker.html"
+    }
+  ],
+  "categories": {
+    "transform": {
+      "name": "変換",
+      "description": "データ形式の変換ツール"
+    },
+    "generate": {
+      "name": "生成",
+      "description": "データ生成ツール"
+    },
+    "text": {
+      "name": "テキスト",
+      "description": "テキスト処理ツール"
+    },
+    "dev": {
+      "name": "開発",
+      "description": "開発支援ツール"
+    }
+  }
+}
