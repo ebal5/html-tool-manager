@@ -1,6 +1,13 @@
 """Tests for template library API endpoints."""
 
+import pytest
 from fastapi.testclient import TestClient
+
+from html_tool_manager.api.templates import (
+    clear_templates_cache,
+    validate_template_file_path,
+)
+from html_tool_manager.models.tool import NAME_MAX_LENGTH
 
 
 class TestListTemplates:
@@ -128,3 +135,88 @@ class TestTemplatesPage:
         response = client.get("/templates")
         assert response.status_code == 200
         assert "templates-gallery" in response.text
+
+
+class TestPathValidation:
+    """Tests for path traversal protection."""
+
+    def test_path_traversal_with_double_dots_blocked(self):
+        """Test that .. in path is blocked."""
+        from fastapi import HTTPException
+
+        with pytest.raises(HTTPException) as exc_info:
+            validate_template_file_path("../etc/passwd")
+        assert exc_info.value.status_code == 400
+        assert "Invalid template file path" in exc_info.value.detail
+
+    def test_absolute_path_blocked(self):
+        """Test that absolute paths are blocked."""
+        from fastapi import HTTPException
+
+        with pytest.raises(HTTPException) as exc_info:
+            validate_template_file_path("/etc/passwd")
+        assert exc_info.value.status_code == 400
+        assert "Invalid template file path" in exc_info.value.detail
+
+    def test_path_with_embedded_double_dots_blocked(self):
+        """Test that paths with .. embedded are blocked."""
+        from fastapi import HTTPException
+
+        with pytest.raises(HTTPException) as exc_info:
+            validate_template_file_path("tools/../../../etc/passwd")
+        assert exc_info.value.status_code == 400
+
+    def test_valid_path_allowed(self):
+        """Test that valid paths within templates directory are allowed."""
+        # This should not raise an exception
+        result = validate_template_file_path("tools/json-formatter.html")
+        assert result is not None
+
+
+class TestCustomNameValidation:
+    """Tests for custom_name validation."""
+
+    def test_custom_name_too_long_rejected(self, client: TestClient):
+        """Test that custom_name exceeding max length is rejected."""
+        long_name = "a" * (NAME_MAX_LENGTH + 1)
+        response = client.post(
+            "/api/templates/json-formatter/add",
+            json={"custom_name": long_name},
+        )
+        assert response.status_code == 422  # Validation error
+
+    def test_custom_name_empty_rejected(self, client: TestClient):
+        """Test that empty custom_name is rejected."""
+        response = client.post(
+            "/api/templates/json-formatter/add",
+            json={"custom_name": ""},
+        )
+        assert response.status_code == 422  # Validation error
+
+    def test_custom_name_max_length_accepted(self, client: TestClient):
+        """Test that custom_name at max length is accepted."""
+        max_name = "a" * NAME_MAX_LENGTH
+        response = client.post(
+            "/api/templates/timestamp-converter/add",
+            json={"custom_name": max_name},
+        )
+        assert response.status_code == 201
+        assert response.json()["name"] == max_name
+
+
+class TestTemplateCache:
+    """Tests for template caching functionality."""
+
+    def test_cache_clear_function(self, client: TestClient):
+        """Test that cache can be cleared."""
+        # First request populates cache
+        response1 = client.get("/api/templates/")
+        assert response1.status_code == 200
+
+        # Clear cache
+        clear_templates_cache()
+
+        # Second request should still work
+        response2 = client.get("/api/templates/")
+        assert response2.status_code == 200
+        assert response1.json() == response2.json()

@@ -4,12 +4,13 @@ import json
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+from fastapi import APIRouter, Body, Depends, HTTPException, status
+from pydantic import BaseModel, Field
 from sqlmodel import Session
 
 from html_tool_manager.core.db import get_session
 from html_tool_manager.models import ToolCreate, ToolRead
+from html_tool_manager.models.tool import NAME_MAX_LENGTH
 from html_tool_manager.repositories import ToolRepository
 
 router = APIRouter(prefix="/templates", tags=["templates"])
@@ -48,12 +49,21 @@ class TemplatesResponse(BaseModel):
 class AddTemplateRequest(BaseModel):
     """Request model for adding a template as a tool."""
 
-    custom_name: str | None = None
+    custom_name: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=NAME_MAX_LENGTH,
+        description="Custom name for the tool (optional)",
+    )
 
 
 # --- Helper Functions ---
+# テンプレートデータのキャッシュ
+_templates_cache: dict[str, Any] | None = None
+
+
 def load_templates_data() -> dict[str, Any]:
-    """Load templates.json data.
+    """Load templates.json data with caching.
 
     Returns:
         Parsed JSON data containing templates and categories.
@@ -62,6 +72,12 @@ def load_templates_data() -> dict[str, Any]:
         HTTPException: If templates configuration file is not found or invalid.
 
     """
+    global _templates_cache
+
+    # キャッシュがあれば返す
+    if _templates_cache is not None:
+        return _templates_cache
+
     if not TEMPLATES_JSON.exists():
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -70,12 +86,19 @@ def load_templates_data() -> dict[str, Any]:
     try:
         with open(TEMPLATES_JSON, encoding="utf-8") as f:
             data: dict[str, Any] = json.load(f)
+            _templates_cache = data
             return data
     except json.JSONDecodeError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Invalid templates configuration: {e}",
         )
+
+
+def clear_templates_cache() -> None:
+    """Clear templates data cache. Useful for testing."""
+    global _templates_cache
+    _templates_cache = None
 
 
 def validate_template_file_path(file_path: str) -> Path:
@@ -151,7 +174,7 @@ def list_templates() -> TemplatesResponse:
 @router.post("/{template_id}/add", response_model=ToolRead, status_code=status.HTTP_201_CREATED)
 def add_template_as_tool(
     template_id: str,
-    request: AddTemplateRequest | None = None,
+    request: AddTemplateRequest = Body(default=AddTemplateRequest()),
     session: Session = Depends(get_session),
 ) -> ToolRead:
     """Add a template as a new tool.
@@ -197,7 +220,7 @@ def add_template_as_tool(
         )
 
     # ツール名を決定（カスタム名があればそれを使用）
-    tool_name = request.custom_name if request and request.custom_name else template["name"]
+    tool_name = request.custom_name if request.custom_name else template["name"]
 
     # ToolCreateモデルを作成
     tool_data = ToolCreate(

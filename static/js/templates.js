@@ -6,6 +6,15 @@
 document.addEventListener('DOMContentLoaded', () => {
   const gallery = document.getElementById('templates-gallery');
   const categoryFilter = document.querySelector('.category-filter');
+
+  // 必須要素が存在しない場合は処理を中断
+  if (!gallery || !categoryFilter) {
+    console.error(
+      'Required elements not found: templates-gallery or category-filter',
+    );
+    return;
+  }
+
   let templatesData = null;
   let currentCategory = 'all';
 
@@ -146,8 +155,14 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Failed to add template');
+        let errorMessage = 'Failed to add template';
+        try {
+          const error = await response.json();
+          errorMessage = error.detail || errorMessage;
+        } catch {
+          // レスポンスがJSONでない場合はデフォルトメッセージを使用
+        }
+        throw new Error(errorMessage);
       }
 
       // Success
