@@ -16,6 +16,7 @@ from starlette.middleware.base import RequestResponseEndpoint
 from starlette.responses import Response
 
 from html_tool_manager.api.backup import router as backup_router
+from html_tool_manager.api.templates import router as templates_router
 from html_tool_manager.api.tools import router as tools_router
 from html_tool_manager.core.backup import BackupService
 from html_tool_manager.core.config import backup_settings
@@ -142,12 +143,19 @@ templates = Jinja2Templates(directory="templates")
 
 app.include_router(tools_router, prefix="/api")
 app.include_router(backup_router, prefix="/api")
+app.include_router(templates_router, prefix="/api")
 
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request) -> HTMLResponse:
     """Render the tools list page (home page)."""
     return templates.TemplateResponse("index.html", {"request": request})
+
+
+@app.get("/templates", response_class=HTMLResponse)
+async def templates_page(request: Request) -> HTMLResponse:
+    """Render the templates gallery page."""
+    return templates.TemplateResponse("templates.html", {"request": request})
 
 
 @app.get("/tools/create", response_class=HTMLResponse)
