@@ -54,11 +54,11 @@
                     <tr><th>キー</th><th>機能</th></tr>
                 </thead>
                 <tbody id="shortcut-list">
-                    <tr><td><kbd>Ctrl</kbd>+<kbd>K</kbd></td><td>コマンドパレット</td></tr>
-                    <tr><td><kbd>Ctrl</kbd>+<kbd>N</kbd></td><td>新規作成</td></tr>
-                    <tr><td><kbd>Ctrl</kbd>+<kbd>E</kbd></td><td>編集</td></tr>
-                    <tr><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>保存</td></tr>
-                    <tr><td><kbd>Ctrl</kbd>+<kbd>/</kbd></td><td>このヘルプを表示</td></tr>
+                    <tr><td><kbd class="modifier-key">Ctrl</kbd>+<kbd>K</kbd></td><td>コマンドパレット</td></tr>
+                    <tr><td><kbd class="modifier-key">Ctrl</kbd>+<kbd>N</kbd></td><td>新規作成</td></tr>
+                    <tr><td><kbd class="modifier-key">Ctrl</kbd>+<kbd>E</kbd></td><td>編集</td></tr>
+                    <tr><td><kbd class="modifier-key">Ctrl</kbd>+<kbd>S</kbd></td><td>保存</td></tr>
+                    <tr><td><kbd class="modifier-key">Ctrl</kbd>+<kbd>/</kbd></td><td>このヘルプを表示</td></tr>
                     <tr><td><kbd>Esc</kbd></td><td>モーダルを閉じる</td></tr>
                 </tbody>
             </table>
@@ -67,7 +67,9 @@
             </footer>
         </article>
     </dialog>
-    <script src="https://cdn.jsdelivr.net/npm/hotkeys-js@3/dist/hotkeys.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hotkeys-js@3.13.15/dist/hotkeys.min.js"
+            integrity="sha384-/wcmNn82EKPqidpArUUINSxpunohWPJ9y9sn+NTHmAyzY4Hu62pWvcle5xbmfMwh"
+            crossorigin="anonymous"></script>
     <script src="/static/js/command-palette.js"></script>
     <script src="/static/js/keyboard-shortcuts.js"></script>
     <script src="/static/js/main.js"></script>

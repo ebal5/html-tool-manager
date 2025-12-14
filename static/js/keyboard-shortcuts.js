@@ -10,7 +10,30 @@
 // biome-ignore lint/correctness/noUnusedVariables: グローバルに公開するモジュール
 const KeyboardShortcuts = (() => {
   /**
+   * Macプラットフォームかどうかを判定
+   * @returns {boolean}
+   */
+  function isMac() {
+    return /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+  }
+
+  /**
+   * ヘルプモーダルの修飾キー表示を更新
+   */
+  function updateModifierKeyDisplay() {
+    if (!isMac()) return;
+
+    const modifierKeys = document.querySelectorAll('.modifier-key');
+    modifierKeys.forEach((el) => {
+      if (el.textContent === 'Ctrl') {
+        el.textContent = '⌘';
+      }
+    });
+  }
+
+  /**
    * アクティブ要素がテキスト入力中かどうかを判定
+   * 外部から利用可能なユーティリティ関数
    * @returns {boolean}
    */
   function isInputActive() {
@@ -139,6 +162,9 @@ const KeyboardShortcuts = (() => {
     }
 
     const context = getCurrentPageContext();
+
+    // Macの場合、修飾キー表示を更新
+    updateModifierKeyDisplay();
 
     // フォーム内でもCtrl+Sを有効にする設定
     hotkeys.filter = (event) => {

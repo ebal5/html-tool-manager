@@ -60,7 +60,8 @@
 }
 
 #command-palette-results li.no-results,
-#command-palette-results li.error {
+#command-palette-results li.error,
+#command-palette-results li.hint {
   cursor: default;
   color: var(--pico-muted-color);
   text-align: center;

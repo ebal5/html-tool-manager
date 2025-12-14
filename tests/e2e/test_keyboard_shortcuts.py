@@ -49,6 +49,56 @@ class TestCommandPalette:
         # Wait for search results
         expect(test_page.locator("#command-palette-results li .tool-name")).to_contain_text("Searchable Tool")
 
+    def test_command_palette_keyboard_navigation(self, test_page: Page, live_server: str) -> None:
+        """Command palette should support keyboard navigation."""
+        import re
+
+        # Create two tools for navigation test
+        for name in ["Nav Tool One", "Nav Tool Two"]:
+            test_page.goto(f"{live_server}/tools/create")
+            test_page.fill("#name", name)
+            ace_textarea = test_page.locator("#code-editor textarea.ace_text-input")
+            ace_textarea.focus()
+            test_page.keyboard.type("<p>Content</p>")
+            test_page.click("#submit-btn")
+            expect(test_page.locator("#message")).to_contain_text("作成しました")
+
+        # Go back to home
+        test_page.goto(live_server)
+
+        # Open command palette and search
+        test_page.keyboard.press("Control+k")
+        expect(test_page.locator("#command-palette")).to_be_visible()
+        test_page.fill("#command-palette-search", "Nav Tool")
+
+        # Wait for results
+        expect(test_page.locator("#command-palette-results li")).to_have_count(2)
+
+        # Navigate down with arrow key
+        test_page.keyboard.press("ArrowDown")
+        expect(test_page.locator("#command-palette-results li").first).to_have_attribute("aria-selected", "true")
+
+        # Navigate down again
+        test_page.keyboard.press("ArrowDown")
+        expect(test_page.locator("#command-palette-results li").nth(1)).to_have_attribute("aria-selected", "true")
+
+        # Navigate up
+        test_page.keyboard.press("ArrowUp")
+        expect(test_page.locator("#command-palette-results li").first).to_have_attribute("aria-selected", "true")
+
+        # Press Enter to navigate to the tool
+        test_page.keyboard.press("Enter")
+        expect(test_page).to_have_url(re.compile(r"/tools/view/\d+"))
+
+    def test_command_palette_shows_hint_when_empty(self, test_page: Page) -> None:
+        """Command palette should show hint when search is empty."""
+        test_page.keyboard.press("Control+k")
+        expect(test_page.locator("#command-palette")).to_be_visible()
+
+        # Should show hint message
+        expect(test_page.locator("#command-palette-results li.hint")).to_be_visible()
+        expect(test_page.locator("#command-palette-results li.hint")).to_contain_text("キーワードを入力して検索")
+
 
 @pytest.mark.e2e
 class TestHelpModal:

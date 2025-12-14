@@ -9,6 +9,9 @@
 
 // biome-ignore lint/correctness/noUnusedVariables: keyboard-shortcuts.jsから参照
 const CommandPalette = (() => {
+  /** 検索デバウンス遅延（ミリ秒） */
+  const SEARCH_DEBOUNCE_MS = 300;
+
   let dialog = null;
   let searchInput = null;
   let resultsList = null;
@@ -60,8 +63,8 @@ const CommandPalette = (() => {
     dialog.showModal();
     searchInput.value = '';
     selectedIndex = -1;
-    resultsList.innerHTML = '';
     tools = [];
+    showHint();
     searchInput.focus();
   }
 
@@ -70,6 +73,7 @@ const CommandPalette = (() => {
    */
   function close() {
     if (!dialog) return;
+    clearTimeout(debounceTimer);
     dialog.close();
   }
 
@@ -93,7 +97,26 @@ const CommandPalette = (() => {
       return;
     }
 
-    debounceTimer = setTimeout(() => searchTools(query), 300);
+    // 空クエリの場合はヒントを表示
+    if (query.length === 0) {
+      showHint();
+      return;
+    }
+
+    debounceTimer = setTimeout(() => searchTools(query), SEARCH_DEBOUNCE_MS);
+  }
+
+  /**
+   * 検索ヒントを表示
+   */
+  function showHint() {
+    tools = [];
+    selectedIndex = -1;
+    resultsList.innerHTML = '';
+    const li = document.createElement('li');
+    li.className = 'hint';
+    li.textContent = 'キーワードを入力して検索';
+    resultsList.appendChild(li);
   }
 
   /**
@@ -163,8 +186,11 @@ const CommandPalette = (() => {
       renderResults();
     } catch (error) {
       console.error('Error searching tools:', error);
-      resultsList.innerHTML =
-        '<li class="error">検索中にエラーが発生しました</li>';
+      resultsList.innerHTML = '';
+      const li = document.createElement('li');
+      li.className = 'error';
+      li.textContent = '検索中にエラーが発生しました';
+      resultsList.appendChild(li);
     }
   }
 
@@ -176,8 +202,10 @@ const CommandPalette = (() => {
     selectedIndex = -1;
 
     if (tools.length === 0) {
-      resultsList.innerHTML =
-        '<li class="no-results">ツールが見つかりませんでした</li>';
+      const li = document.createElement('li');
+      li.className = 'no-results';
+      li.textContent = 'ツールが見つかりませんでした';
+      resultsList.appendChild(li);
       return;
     }
 
