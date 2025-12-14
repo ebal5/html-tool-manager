@@ -90,7 +90,38 @@ npx @biomejs/biome check --write static/js/
 - `tag:xxx` - タグ部分一致検索
 - `"phrase"` - フレーズ検索
 
+## スナップショット機能
+
+ツールの変更履歴を自動保存し、過去のバージョンに復元できる機能。
+
+### スナップショットAPI
+
+| メソッド | エンドポイント | 説明 |
+|---------|---------------|------|
+| GET | /api/tools/{id}/snapshots | スナップショット一覧 |
+| POST | /api/tools/{id}/snapshots | 手動スナップショット作成 |
+| GET | /api/tools/{id}/snapshots/{snapshot_id} | 詳細取得（コンテンツ含む） |
+| DELETE | /api/tools/{id}/snapshots/{snapshot_id} | 削除 |
+| POST | /api/tools/{id}/snapshots/{snapshot_id}/restore | 復元 |
+| GET | /api/tools/{id}/snapshots/{snapshot_id}/diff | 差分取得 |
+
+### 設定
+
+- 保持上限: 20件/ツール（`MAX_SNAPSHOTS_PER_TOOL` in `models/snapshot.py`）
+- 自動保存: ツール更新時に内容が変更された場合のみ
+
 ## 注意事項
+
+### データベースマイグレーション
+
+新しいテーブル（`tool_snapshot`等）はアプリケーション起動時に自動作成されます。
+
+**既存環境のアップグレード手順:**
+1. アプリケーションを停止
+2. 新しいコードをデプロイ
+3. アプリケーションを起動（テーブルが自動作成される）
+
+**注意**: SQLModelは自動的に存在しないテーブルを作成しますが、既存テーブルのスキーマ変更は行いません。カラム追加等が必要な場合は手動でALTER文を実行してください。
 
 ### バリデーション定数の同期
 

@@ -16,6 +16,7 @@ from starlette.middleware.base import RequestResponseEndpoint
 from starlette.responses import Response
 
 from html_tool_manager.api.backup import router as backup_router
+from html_tool_manager.api.snapshots import router as snapshots_router
 from html_tool_manager.api.templates import router as templates_router
 from html_tool_manager.api.tools import router as tools_router
 from html_tool_manager.core.backup import BackupService
@@ -143,6 +144,7 @@ templates = Jinja2Templates(directory="templates")
 
 app.include_router(tools_router, prefix="/api")
 app.include_router(backup_router, prefix="/api")
+app.include_router(snapshots_router, prefix="/api")
 app.include_router(templates_router, prefix="/api")
 
 
