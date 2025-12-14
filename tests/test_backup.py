@@ -1,5 +1,6 @@
 """Tests for backup service."""
 
+import sqlite3
 import time
 from pathlib import Path
 
@@ -15,11 +16,19 @@ from html_tool_manager.core.backup import (
 )
 
 
+def _create_test_database(db_path: Path) -> None:
+    """Create a simple SQLite database for testing."""
+    with sqlite3.connect(str(db_path)) as conn:
+        conn.execute("CREATE TABLE test (id INTEGER PRIMARY KEY, value TEXT)")
+        conn.execute("INSERT INTO test (value) VALUES ('test data')")
+        conn.commit()
+
+
 @pytest.fixture
 def backup_service(tmp_path: Path) -> BackupService:
     """Create a BackupService with temporary directories."""
     db_path = tmp_path / "test.db"
-    db_path.write_text("test database content")
+    _create_test_database(db_path)
     backup_dir = tmp_path / "backups"
     return BackupService(str(db_path), str(backup_dir), max_generations=3)
 
@@ -104,9 +113,12 @@ class TestBackupServiceCreateBackup:
     def test_create_backup_copies_content(self, backup_service: BackupService) -> None:
         """Backup file should have the same content as original."""
         result = backup_service.create_backup()
-        original_content = backup_service.db_path.read_text()
-        backup_content = result.filepath.read_text()
-        assert original_content == backup_content
+        # Verify SQLite database content matches
+        with sqlite3.connect(str(backup_service.db_path)) as orig:
+            orig_data = orig.execute("SELECT * FROM test").fetchall()
+        with sqlite3.connect(str(result.filepath)) as backup:
+            backup_data = backup.execute("SELECT * FROM test").fetchall()
+        assert orig_data == backup_data
 
     def test_create_backup_fails_if_db_missing(self, tmp_path: Path) -> None:
         """Backup should fail if database file doesn't exist."""
@@ -188,13 +200,23 @@ class TestBackupServiceRestore:
         backup = backup_service.create_backup()
 
         # Modify the original database
-        backup_service.db_path.write_text("modified content")
+        with sqlite3.connect(str(backup_service.db_path)) as conn:
+            conn.execute("UPDATE test SET value = 'modified data' WHERE id = 1")
+            conn.commit()
+
+        # Verify modification
+        with sqlite3.connect(str(backup_service.db_path)) as conn:
+            modified_data = conn.execute("SELECT value FROM test WHERE id = 1").fetchone()
+        assert modified_data[0] == "modified data"
 
         # Restore from backup
         result = backup_service.restore_backup(backup.filename)
 
         assert result is True
-        assert backup_service.db_path.read_text() == "test database content"
+        # Verify original data is restored
+        with sqlite3.connect(str(backup_service.db_path)) as conn:
+            restored_data = conn.execute("SELECT value FROM test WHERE id = 1").fetchone()
+        assert restored_data[0] == "test data"
 
     def test_restore_backup_not_found(self, backup_service: BackupService) -> None:
         """Restore should fail with nonexistent backup."""

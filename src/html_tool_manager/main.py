@@ -2,9 +2,10 @@ import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
+from urllib.parse import urlparse
 
-from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.schedulers.background import BackgroundScheduler  # type: ignore[import-untyped]
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -22,23 +23,45 @@ from html_tool_manager.core.db import DATABASE_URL, create_db_and_tables, engine
 
 logger = logging.getLogger(__name__)
 
-# Global scheduler instance
-scheduler: Optional[BackgroundScheduler] = None
-
 
 def _get_db_path_from_url(url: str) -> Path:
-    """Extract database file path from SQLite URL."""
-    # DATABASE_URL format: "sqlite:///./tools.db"
-    if url.startswith("sqlite:///"):
-        return Path(url.replace("sqlite:///", ""))
-    return Path("tools.db")
+    """Extract database file path from SQLite URL.
+
+    Args:
+        url: SQLite database URL (e.g., "sqlite:///./tools.db").
+
+    Returns:
+        Path object pointing to the database file.
+
+    Raises:
+        ValueError: If URL scheme is not sqlite or database is in-memory.
+
+    """
+    parsed = urlparse(url)
+    if parsed.scheme != "sqlite":
+        raise ValueError(f"Unsupported database scheme: {parsed.scheme}")
+
+    # Handle SQLite URL path (remove leading '/' for relative paths)
+    db_path = parsed.path
+    if db_path.startswith("///"):
+        # Absolute path: sqlite:////absolute/path/db.db
+        db_path = db_path[3:]
+    elif db_path.startswith("/./"):
+        # Relative path: sqlite:///./relative/path/db.db
+        db_path = db_path[3:]
+    elif db_path.startswith("/"):
+        # Simple relative path: sqlite:///db.db
+        db_path = db_path[1:]
+
+    if not db_path or db_path == ":memory:":
+        raise ValueError("Cannot backup in-memory database")
+
+    return Path(db_path)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Manage application lifecycle events."""
-    global scheduler
-
     # 起動時: DB初期化
     create_db_and_tables()
 
@@ -59,22 +82,22 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         except Exception as e:
             logger.error("Failed to create startup backup: %s", e)
 
-    # スケジューラ起動
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(
+    # スケジューラ起動（app.stateに格納）
+    app.state.scheduler = BackgroundScheduler()
+    app.state.scheduler.add_job(
         backup_service.create_backup,
         "interval",
         hours=backup_settings.backup_interval_hours,
         id="scheduled_backup",
     )
-    scheduler.start()
+    app.state.scheduler.start()
     logger.info("Backup scheduler started (interval: %d hours)", backup_settings.backup_interval_hours)
 
     yield
 
     # 終了時: スケジューラ停止
-    if scheduler and scheduler.running:
-        scheduler.shutdown()
+    if hasattr(app.state, "scheduler") and app.state.scheduler.running:
+        app.state.scheduler.shutdown()
         logger.info("Backup scheduler stopped")
 
 

@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, Request, status
 
 from html_tool_manager.core.backup import (
     BackupError,
+    BackupInfo,
     BackupNotFoundError,
     BackupService,
     InvalidFilenameError,
@@ -20,15 +21,20 @@ router = APIRouter(prefix="/backup", tags=["backup"])
 
 def _get_backup_service(request: Request) -> BackupService:
     """Get BackupService from app state."""
-    return request.app.state.backup_service
+    service: BackupService = request.app.state.backup_service
+    return service
 
 
-def _backup_to_response(backup_info: "BackupService") -> BackupInfoResponse:
-    """Convert BackupInfo to BackupInfoResponse."""
-    from html_tool_manager.core.backup import BackupInfo
+def _backup_to_response(backup_info: BackupInfo) -> BackupInfoResponse:
+    """Convert BackupInfo to BackupInfoResponse.
 
-    if not isinstance(backup_info, BackupInfo):
-        raise TypeError("Expected BackupInfo instance")
+    Args:
+        backup_info: BackupInfo instance to convert.
+
+    Returns:
+        BackupInfoResponse for API response.
+
+    """
     return BackupInfoResponse(
         filename=backup_info.filename,
         created_at=backup_info.created_at,

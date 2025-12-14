@@ -3,6 +3,7 @@
 import logging
 import re
 import shutil
+import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -25,7 +26,7 @@ class BackupInfo:
     @property
     def size_human(self) -> str:
         """Return human-readable file size."""
-        size = self.size_bytes
+        size: float = float(self.size_bytes)
         for unit in ["B", "KB", "MB", "GB"]:
             if size < 1024:
                 return f"{size:.1f} {unit}"
@@ -77,6 +78,10 @@ class BackupService:
             BackupError: If the backup fails.
 
         """
+        # Check if database file exists
+        if not self.db_path.exists():
+            raise BackupError(f"Database file not found: {self.db_path}")
+
         # Ensure backup directory exists
         self.backup_dir.mkdir(parents=True, exist_ok=True)
 
@@ -86,8 +91,11 @@ class BackupService:
         backup_path = self.backup_dir / filename
 
         try:
-            # Copy database file (shutil.copy2 preserves metadata)
-            shutil.copy2(self.db_path, backup_path)
+            # Use SQLite backup API for WAL mode safety
+            # This ensures consistent backups even with active connections
+            with sqlite3.connect(str(self.db_path)) as src:
+                with sqlite3.connect(str(backup_path)) as dst:
+                    src.backup(dst)
             logger.info("Created backup: %s", filename)
 
             # Get backup info before rotation
@@ -103,7 +111,7 @@ class BackupService:
             self._rotate_backups()
 
             return backup_info
-        except OSError as e:
+        except (OSError, sqlite3.Error) as e:
             logger.error("Failed to create backup: %s", e)
             raise BackupError(f"Failed to create backup: {e}") from e
 
