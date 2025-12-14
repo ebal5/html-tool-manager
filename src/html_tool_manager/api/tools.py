@@ -153,7 +153,7 @@ def export_tools(export_request: ToolExportRequest, session: Session = Depends(g
         if tool:
             # HTMLコンテンツを読み込む
             try:
-                with open(tool.filepath, "r") as f:
+                with open(tool.filepath, "r", encoding="utf-8") as f:
                     html_content = f.read()
             except FileNotFoundError:
                 # ファイルが見つからない場合はスキップ
