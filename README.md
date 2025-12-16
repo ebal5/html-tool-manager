@@ -100,8 +100,7 @@ docker pull ghcr.io/ebal5/html-tool-manager:0.2.0
 
 ```bash
 docker run -d -p 8080:80 \
-  -v html-tool-manager-data:/app/static/tools \
-  -v html-tool-manager-db:/app \
+  -v html-tool-manager-data:/data \
   --name html-tool-manager-app \
   ghcr.io/ebal5/html-tool-manager:latest
 ```
@@ -118,15 +117,20 @@ docker run -d -p 8080:80 \
 2.  **Dockerコンテナの実行:**
     ```bash
     docker run -d -p 8080:80 \
-      -v html-tool-manager-data:/app/static/tools \
-      -v html-tool-manager-db:/app \
+      -v html-tool-manager-data:/data \
       --name html-tool-manager-app \
       html-tool-manager:local
     ```
 
 **ボリューム説明:**
-- `html-tool-manager-db`: データベースファイル (`tools.db`) の永続化
-- `html-tool-manager-data`: アップロードされたツールファイルの永続化
+- `html-tool-manager-data`: データベースファイル (`/data/tools.db`) とツールファイル (`/data/tools/`) の永続化
+
+**データディレクトリ構成:**
+```
+/data/
+├── tools.db        # SQLiteデータベース
+└── tools/          # ツールHTMLファイル
+```
 
 > **Note:** コンテナはエントリーポイントスクリプトにより、起動時にボリュームの権限を自動的に修正します。
 > アプリケーション自体は非rootユーザー（appuser）で実行されるため、セキュリティが確保されています。
@@ -134,12 +138,6 @@ docker run -d -p 8080:80 \
 > **Security:** コンテナはボリューム権限の修正のためにrootで起動しますが、即座に`gosu`で
 > appuser（UID 1000）に権限を降格してアプリケーションを実行します。これはDockerセキュリティの
 > ベストプラクティスに従った最小権限の原則を維持しています。
-
-> **Warning:** `html-tool-manager-db`ボリュームは`/app`全体をマウントしています。
-> これは初回起動時にコンテナ内のファイルがボリュームにコピーされますが、
-> **イメージ更新後も古いアプリケーションコードが使用される可能性があります**。
-> イメージを更新した場合は、ボリュームを削除して再作成するか、
-> 手動でアプリケーションファイルを更新してください。
 
 ## セキュリティ
 

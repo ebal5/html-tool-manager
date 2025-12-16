@@ -20,7 +20,7 @@ from html_tool_manager.api.snapshots import router as snapshots_router
 from html_tool_manager.api.templates import router as templates_router
 from html_tool_manager.api.tools import router as tools_router
 from html_tool_manager.core.backup import BackupService
-from html_tool_manager.core.config import backup_settings
+from html_tool_manager.core.config import app_settings, backup_settings
 from html_tool_manager.core.db import DATABASE_URL, create_db_and_tables, engine
 
 logger = logging.getLogger(__name__)
@@ -121,7 +121,7 @@ async def add_security_headers(request: Request, call_next: RequestResponseEndpo
 
     # ツール用HTMLにはCSPを設定しない（iframe sandboxで保護）
     # 理由：ツールごとに使用するCDNが異なり、完全なリストを作成できないため
-    if not request.url.path.startswith("/static/tools/"):
+    if not request.url.path.startswith("/tools/"):
         # アプリケーション本体には完全なCSP
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
@@ -140,6 +140,8 @@ async def add_security_headers(request: Request, call_next: RequestResponseEndpo
 
 # 静的ファイルの提供
 app.mount("/static", StaticFiles(directory="static"), name="static")
+# ツールファイルの提供（環境変数で設定可能なディレクトリ）
+app.mount("/tools", StaticFiles(directory=app_settings.tools_dir), name="tools")
 
 # Jinja2テンプレートの設定
 templates = Jinja2Templates(directory="templates")

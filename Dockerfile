@@ -3,6 +3,9 @@ FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
 # 2. 環境変数を設定
 ENV APP_HOME=/app
+# Docker環境ではデータを/dataに配置
+ENV APP_DATABASE_PATH=/data/tools.db
+ENV APP_TOOLS_DIR=/data/tools
 WORKDIR $APP_HOME
 
 # 3. 非rootユーザーを作成
@@ -30,8 +33,10 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/* && \
     gosu nobody true
 
-# 8. ファイルの所有権を変更
-RUN chown -R appuser:appgroup $APP_HOME
+# 8. ファイルの所有権を変更、/dataディレクトリを作成
+RUN chown -R appuser:appgroup $APP_HOME && \
+    mkdir -p /data/tools && \
+    chown -R appuser:appgroup /data
 
 # 9. エントリーポイントスクリプトをコピー（Docker 20.10+）
 COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/

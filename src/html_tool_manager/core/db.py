@@ -2,9 +2,10 @@ from typing import Generator
 
 from sqlmodel import Session, SQLModel, create_engine, text
 
+from html_tool_manager.core.config import app_settings
 from html_tool_manager.models.snapshot import ToolSnapshot  # noqa: F401
 
-DATABASE_URL = "sqlite:///./tools.db"
+DATABASE_URL = f"sqlite:///{app_settings.database_path}"
 
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 

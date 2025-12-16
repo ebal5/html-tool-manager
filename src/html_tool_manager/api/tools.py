@@ -1,3 +1,4 @@
+import os
 from typing import List, Optional
 
 import msgpack
@@ -5,6 +6,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, Up
 from pydantic import BaseModel
 from sqlmodel import Session
 
+from html_tool_manager.core.config import app_settings
 from html_tool_manager.core.db import get_session
 from html_tool_manager.models import SnapshotType, ToolCreate, ToolRead
 from html_tool_manager.repositories import SnapshotRepository, SortOrder, ToolRepository
@@ -105,15 +107,16 @@ def update_tool(tool_id: int, tool_data: ToolCreate, session: Session = Depends(
 
         # TOCTOU対策: ファイルパスを検証してシンボリックリンク攻撃を防止
         filepath = tool_to_update.filepath
-        if not filepath or ".." in filepath or not filepath.startswith("static/tools/"):
+        tools_dir = app_settings.tools_dir
+        if not filepath or ".." in filepath or not filepath.startswith(f"{tools_dir}/"):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid filepath",
             )
 
-        # 実際のパスを解決してstatic/tools/配下であることを確認
+        # 実際のパスを解決してtools_dir配下であることを確認
         real_path = os.path.realpath(filepath)
-        expected_base = os.path.realpath("static/tools")
+        expected_base = os.path.realpath(tools_dir)
         if not real_path.startswith(expected_base + os.sep):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

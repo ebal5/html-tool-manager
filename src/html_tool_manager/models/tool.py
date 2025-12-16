@@ -96,12 +96,13 @@ class ToolBase(SQLModel):
         # ディレクトリトラバーサル攻撃を防止
         if ".." in v:
             raise ValueError("filepathに'..'を含めることはできません")
-        # 絶対パスを拒否
-        if v.startswith("/"):
-            raise ValueError("filepathに絶対パスは使用できません")
-        # static/tools/配下のみ許可
-        if not v.startswith("static/tools/"):
-            raise ValueError("filepathはstatic/tools/配下である必要があります")
+        # 循環インポートを避けるためここでインポート
+        from html_tool_manager.core.config import app_settings
+
+        tools_dir = app_settings.tools_dir
+        # tools_dir配下のみ許可
+        if not v.startswith(f"{tools_dir}/"):
+            raise ValueError(f"filepathは{tools_dir}/配下である必要があります")
         return v
 
 

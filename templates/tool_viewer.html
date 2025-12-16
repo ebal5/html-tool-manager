@@ -46,12 +46,20 @@
     </div>
 
     <script>
-        const TOOL_PATH_PREFIX = 'static/tools/';
         const toolId = {{ tool_id }};
         const toolNameEl = document.getElementById('tool-name');
         const toolDescriptionEl = document.getElementById('tool-description');
         const toolTagsEl = document.getElementById('tool-tags');
         const toolContentEl = document.getElementById('tool-content');
+
+        // filepathからツールURLを生成（最後の2セグメント: {uuid}/index.html）
+        function getToolUrl(filepath) {
+            if (!filepath) return null;
+            const segments = filepath.split('/');
+            if (segments.length < 2) return null;
+            const relativePath = segments.slice(-2).join('/');
+            return '/tools/' + relativePath;
+        }
 
         // エラーメッセージを安全に表示するヘルパー関数
         function showError(message) {
@@ -87,13 +95,14 @@
                 }
 
                 // ここでツール本体をロードする
-                if (tool.filepath && tool.filepath.startsWith(TOOL_PATH_PREFIX)) {
+                const toolUrl = getToolUrl(tool.filepath);
+                if (toolUrl) {
                     toolContentEl.innerHTML = '';
                     const iframe = document.createElement('iframe');
                     // セキュリティ: allow-scripts のみ設定
                     // allow-same-origin は同一オリジンでサンドボックスをバイパス可能なため除外
                     iframe.setAttribute('sandbox', 'allow-scripts');
-                    iframe.src = '/' + tool.filepath;
+                    iframe.src = toolUrl;
                     iframe.title = tool.name; // アクセシビリティ: スクリーンリーダー用
                     toolContentEl.appendChild(iframe);
                 } else {
