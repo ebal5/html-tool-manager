@@ -6,6 +6,8 @@ from typing import List, Optional
 from pydantic import field_validator
 from sqlmodel import JSON, Column, Field, SQLModel
 
+from html_tool_manager.core.config import app_settings
+
 # 制御文字のパターン
 # 許可: \t (0x09), \n (0x0a)
 # 禁止: \r (0x0d) を含む他の制御文字 - Windows改行(\r\n)は\nのみに正規化される想定
@@ -96,9 +98,6 @@ class ToolBase(SQLModel):
         # ディレクトリトラバーサル攻撃を防止
         if ".." in v:
             raise ValueError("filepathに'..'を含めることはできません")
-        # 循環インポートを避けるためここでインポート
-        from html_tool_manager.core.config import app_settings
-
         tools_dir = app_settings.tools_dir
         # tools_dir配下のみ許可
         if not v.startswith(f"{tools_dir}/"):
