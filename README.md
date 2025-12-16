@@ -125,8 +125,11 @@ docker run -d -p 8080:80 \
     ```
 
 **ボリューム説明:**
-- `html-tool-manager-db`: データベースファイル (`sql_app.db`) の永続化
-- `html-tool-manager-data`: アップロードされたツールの永続化
+- `html-tool-manager-db`: データベースファイル (`tools.db`) の永続化
+- `html-tool-manager-data`: アップロードされたツールファイルの永続化
+
+> **Note:** コンテナはエントリーポイントスクリプトにより、起動時にボリュームの権限を自動的に修正します。
+> アプリケーション自体は非rootユーザー（appuser）で実行されるため、セキュリティが確保されています。
 
 ## セキュリティ
 
