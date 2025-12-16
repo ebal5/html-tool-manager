@@ -182,7 +182,7 @@ def export_tools(export_request: ToolExportRequest, session: Session = Depends(g
         if tool:
             # HTMLコンテンツを読み込む
             try:
-                with open(tool.filepath, "r") as f:
+                with open(tool.filepath, "r", encoding="utf-8") as f:
                     html_content = f.read()
             except FileNotFoundError:
                 # ファイルが見つからない場合はスキップ
@@ -216,16 +216,21 @@ async def import_tools(file: UploadFile = File(...), session: Session = Depends(
     if file.content_type != "application/octet-stream":
         raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail="Unsupported file type.")
 
-    # ファイルサイズの制限を確認
-    contents = await file.read()
-    if len(contents) > MAX_IMPORT_FILE_SIZE:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"File too large. Maximum size is {MAX_IMPORT_FILE_SIZE // (1024 * 1024)}MB.",
-        )
+    # ファイルサイズの制限を確認（DoS対策: ストリーミングでサイズをチェック）
+    # 一度にメモリに読み込まず、チャンクごとにチェックすることでOOMを防止
+    contents = bytearray()
+    chunk_size = 8192  # 8KB
+    while chunk := await file.read(chunk_size):
+        contents.extend(chunk)
+        if len(contents) > MAX_IMPORT_FILE_SIZE:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"File too large. Maximum size is {MAX_IMPORT_FILE_SIZE // (1024 * 1024)}MB.",
+            )
+    contents_bytes = bytes(contents)
 
     try:
-        tools_to_import = msgpack.unpackb(contents, raw=False)
+        tools_to_import = msgpack.unpackb(contents_bytes, raw=False)
     except (msgpack.UnpackException, ValueError) as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid MessagePack file: {e}")
 

@@ -153,7 +153,7 @@ app.include_router(templates_router, prefix="/api")
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request) -> HTMLResponse:
     """Render the tools list page (home page)."""
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request, "index.html")
 
 
 @app.get("/templates", response_class=HTMLResponse)
@@ -165,19 +165,19 @@ async def templates_page(request: Request) -> HTMLResponse:
 @app.get("/tools/create", response_class=HTMLResponse)
 async def create_tool_page(request: Request) -> HTMLResponse:
     """Render the tool creation page."""
-    return templates.TemplateResponse("create.html", {"request": request})
+    return templates.TemplateResponse(request, "create.html")
 
 
 @app.get("/tools/edit/{tool_id}", response_class=HTMLResponse)
 async def edit_tool_page(request: Request, tool_id: int) -> HTMLResponse:
     """Render the tool edit page."""
-    return templates.TemplateResponse("edit.html", {"request": request, "tool_id": tool_id})
+    return templates.TemplateResponse(request, "edit.html", {"tool_id": tool_id})
 
 
 @app.get("/tools/view/{tool_id}", response_class=HTMLResponse)
 async def view_tool_page(request: Request, tool_id: int) -> HTMLResponse:
     """Render the tool viewer page."""
-    return templates.TemplateResponse("tool_viewer.html", {"request": request, "tool_id": tool_id})
+    return templates.TemplateResponse(request, "tool_viewer.html", {"tool_id": tool_id})
 
 
 @app.get("/backup", response_class=HTMLResponse)

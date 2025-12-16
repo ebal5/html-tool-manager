@@ -249,3 +249,39 @@ def test_backward_compatibility_existing_html_tools(client: TestClient, session:
 
     # クリーンアップ
     client.delete(f"/api/tools/{data['id']}")
+
+
+def test_updated_at_changes_on_update(client: TestClient, session: Session):
+    """ツール更新時にupdated_atが更新されることをテスト。"""
+    import time
+
+    # ツールを作成
+    tool_data = {
+        "name": "UpdatedAt Test",
+        "html_content": "<h1>Test</h1>",
+    }
+
+    response = client.post("/api/tools/", json=tool_data)
+    assert response.status_code == 201
+    data = response.json()
+    tool_id = data["id"]
+    original_updated_at = data["updated_at"]
+
+    # 少し待機（タイムスタンプが異なることを保証）
+    time.sleep(0.1)
+
+    # ツールを更新
+    update_data = {
+        "name": "UpdatedAt Test",
+        "description": "Updated description",
+    }
+    update_response = client.put(f"/api/tools/{tool_id}", json=update_data)
+    assert update_response.status_code == 200
+    updated_data = update_response.json()
+
+    # updated_atが変更されていることを確認
+    assert updated_data["updated_at"] != original_updated_at
+    assert updated_data["updated_at"] > original_updated_at
+
+    # クリーンアップ
+    client.delete(f"/api/tools/{tool_id}")

@@ -140,3 +140,44 @@ def test_react18_hooks_included_in_template():
     assert "useTransition" in result
     assert "useDeferredValue" in result
     assert "useId" in result
+
+
+def test_script_tag_escaped_to_prevent_xss():
+    """</script>タグがエスケープされてXSS攻撃を防ぐことをテスト。"""
+    # 正常なテンプレートの</script>数を基準として取得
+    normal_jsx = "function App() { return <div>Test</div>; }"
+    normal_result = generate_react_html(normal_jsx)
+    normal_script_count = normal_result.count("</script>")
+
+    # 悪意のあるコードを含むJSXコード（</script>を含む）
+    malicious_jsx = """
+function App() {
+    const msg = '</script><script>alert("XSS")</script>';
+    return <div>{msg}</div>;
+}
+"""
+    malicious_result = generate_react_html(malicious_jsx)
+
+    # </script>がエスケープされていることを確認
+    # 悪意あるコードの</script>がエスケープされ、元のタグ数と同じになること
+    malicious_script_count = malicious_result.count("</script>")
+    assert malicious_script_count == normal_script_count
+
+    # エスケープされた形式が存在すること
+    assert r"<\/script>" in malicious_result
+
+
+def test_script_tag_case_insensitive_escape():
+    """大文字小文字両方の</SCRIPT>タグがエスケープされることをテスト。"""
+    jsx_code = """
+function App() {
+    const a = '</script>';
+    const b = '</SCRIPT>';
+    return <div>Test</div>;
+}
+"""
+    result = generate_react_html(jsx_code)
+
+    # 両方エスケープされていること
+    assert r"<\/script>" in result
+    assert r"<\/SCRIPT>" in result

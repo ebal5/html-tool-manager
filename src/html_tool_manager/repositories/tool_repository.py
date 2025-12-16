@@ -200,6 +200,8 @@ class ToolRepository:
 
     def update_tool(self, tool_id: int, tool_update: Tool) -> Optional[Tool]:
         """Update existing tool information."""
+        from datetime import datetime, timezone
+
         tool = self.session.get(Tool, tool_id)
         if not tool:
             return None
@@ -207,6 +209,9 @@ class ToolRepository:
         tool_data = tool_update.model_dump(exclude_unset=True)
         for key, value in tool_data.items():
             setattr(tool, key, value)
+
+        # updated_atを現在時刻に更新
+        tool.updated_at = datetime.now(timezone.utc)
 
         self.session.add(tool)
         self.session.commit()
