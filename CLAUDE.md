@@ -70,6 +70,24 @@ npx @biomejs/biome check --write static/js/
 - フロント lint: `npx @biomejs/biome check static/js/`
 - 型チェック: `uv run mypy src/`
 
+### プッシュ前チェック（必須）
+
+**重要**: `git push` を実行する前に、以下のチェックを**必ず**実行すること。
+
+```bash
+# 1. Lint/Format（修正＋確認）
+uv run ruff check --fix . && uv run ruff format .
+uv run ruff check . && uv run ruff format --check .
+
+# 2. ユニットテスト（E2Eは除外）
+uv run pytest -m "not e2e" -x
+
+# 3. 型チェック（オプションだが推奨）
+uv run mypy src/
+```
+
+これらのチェックがすべてパスしてからプッシュすること。CIの無駄な実行を防ぎ、レビューの手間を減らすため。
+
 ## API概要
 
 | メソッド | エンドポイント | 説明 |

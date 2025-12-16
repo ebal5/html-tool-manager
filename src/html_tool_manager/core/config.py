@@ -1,6 +1,18 @@
-"""Backup configuration settings."""
+"""Application configuration settings."""
 
 from pydantic_settings import BaseSettings
+
+
+class AppSettings(BaseSettings):
+    """Core application settings.
+
+    All settings can be overridden via environment variables.
+    """
+
+    database_path: str = "./tools.db"
+    tools_dir: str = "static/tools"
+
+    model_config = {"env_prefix": "APP_"}
 
 
 class BackupSettings(BaseSettings):
@@ -17,4 +29,5 @@ class BackupSettings(BaseSettings):
     model_config = {"env_prefix": "BACKUP_"}
 
 
+app_settings = AppSettings()
 backup_settings = BackupSettings()

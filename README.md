@@ -100,8 +100,7 @@ docker pull ghcr.io/ebal5/html-tool-manager:0.2.0
 
 ```bash
 docker run -d -p 8080:80 \
-  -v html-tool-manager-data:/app/static/tools \
-  -v html-tool-manager-db:/app \
+  -v html-tool-manager-data:/data \
   --name html-tool-manager-app \
   ghcr.io/ebal5/html-tool-manager:latest
 ```
@@ -118,15 +117,23 @@ docker run -d -p 8080:80 \
 2.  **Dockerコンテナの実行:**
     ```bash
     docker run -d -p 8080:80 \
-      -v html-tool-manager-data:/app/static/tools \
-      -v html-tool-manager-db:/app \
+      -v html-tool-manager-data:/data \
       --name html-tool-manager-app \
       html-tool-manager:local
     ```
 
 **ボリューム説明:**
-- `html-tool-manager-db`: データベースファイル (`sql_app.db`) の永続化
-- `html-tool-manager-data`: アップロードされたツールの永続化
+- `html-tool-manager-data`: データベースファイル (`/data/tools.db`) とツールファイル (`/data/tools/`) の永続化
+
+**データディレクトリ構成:**
+```
+/data/
+├── tools.db        # SQLiteデータベース
+└── tools/          # ツールHTMLファイル
+```
+
+> **Security:** エントリーポイントはボリューム権限修正のため一時的にrootで実行されますが、
+> 即座に`gosu`で非rootユーザー（UID 1000）に降格します。アプリケーション自体はroot権限で実行されません。
 
 ## セキュリティ
 

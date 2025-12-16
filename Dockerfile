@@ -3,6 +3,9 @@ FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
 # 2. 環境変数を設定
 ENV APP_HOME=/app
+# Docker環境ではデータを/dataに配置
+ENV APP_DATABASE_PATH=/data/tools.db
+ENV APP_TOOLS_DIR=/data/tools
 WORKDIR $APP_HOME
 
 # 3. 非rootユーザーを作成
@@ -21,20 +24,31 @@ RUN uv sync --frozen --no-dev
 COPY ./static ./static
 COPY ./templates ./templates
 
-# 7. OSパッケージをアップデート（セキュリティ修正）
+# 7. OSパッケージをアップデート、gosuをインストール（セキュリティ修正）
+# gosu: ENTRYPOINTでroot→appuserへの権限降格に使用
 # NOTE: ビルドキャッシュ効率のため、アプリケーション層の後に配置
-RUN apt-get update && apt-get upgrade -y --no-install-recommends && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && \
+    apt-get upgrade -y --no-install-recommends && \
+    apt-get install -y --no-install-recommends gosu && \
+    rm -rf /var/lib/apt/lists/* && \
+    gosu nobody true
 
-# 8. ファイルの所有権を変更し、非rootユーザーに切り替え
-RUN chown -R appuser:appgroup $APP_HOME
-USER appuser
+# 8. ファイルの所有権を変更、/dataディレクトリを作成
+RUN chown -R appuser:appgroup $APP_HOME && \
+    mkdir -p /data/tools && \
+    chown -R appuser:appgroup /data
 
-# 9. ポートを公開
+# 9. エントリーポイントスクリプトをコピー（Docker 20.10+）
+COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/
+
+# 10. ポートを公開
 EXPOSE 80
 
-# 10. ヘルスチェック
+# 11. ヘルスチェック
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:80/ || exit 1
 
-# 11. アプリケーションを起動するコマンド
+# 12. エントリーポイントとコマンドを設定
+# ENTRYPOINTはrootで実行され、ボリュームの権限を修正後にappuserとしてCMDを実行
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["uv", "run", "--no-sync", "uvicorn", "html_tool_manager.main:app", "--host", "0.0.0.0", "--port", "80"]

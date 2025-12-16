@@ -8,6 +8,7 @@ from sqlalchemy import Column, Float, Integer, MetaData, String, Table, cast
 from sqlalchemy.sql.elements import ColumnElement
 from sqlmodel import Session, select, text
 
+from html_tool_manager.core.config import app_settings
 from html_tool_manager.models import Tool, ToolCreate
 from html_tool_manager.models.tool import ToolType
 from html_tool_manager.templates.react_template import generate_react_html
@@ -100,7 +101,7 @@ class ToolRepository:
             final_html = tool_data.html_content
 
         # 一意のディレクトリとファイルパスを生成
-        tool_dir = f"static/tools/{uuid.uuid4()}"
+        tool_dir = f"{app_settings.tools_dir}/{uuid.uuid4()}"
         # 明示的な権限でディレクトリを作成（owner: rwx, group/other: rx）
         os.makedirs(tool_dir, mode=0o755, exist_ok=True)
         final_filepath = f"{tool_dir}/index.html"
@@ -233,12 +234,13 @@ class ToolRepository:
 
         # DBコミット成功後にファイルとディレクトリを削除
         # これによりDB削除失敗時にファイルだけ消える問題を防ぐ
-        if filepath and filepath.startswith("static/tools/"):
+        tools_dir = app_settings.tools_dir
+        if filepath and filepath.startswith(f"{tools_dir}/"):
             tool_dir = os.path.dirname(filepath)
-            # シンボリックリンク攻撃を防止: 実際のパスがstatic/tools/配下であることを確認
+            # シンボリックリンク攻撃を防止: 実際のパスがtools_dir配下であることを確認
             try:
                 real_dir = os.path.realpath(tool_dir)
-                expected_base = os.path.realpath("static/tools")
+                expected_base = os.path.realpath(tools_dir)
                 if not real_dir.startswith(expected_base + os.sep):
                     # パストラバーサル攻撃の可能性 - 削除をスキップ
                     pass

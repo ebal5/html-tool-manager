@@ -80,7 +80,6 @@
         // タグオートコンプリートを設定
         setupTagAutocomplete(document.getElementById('tags'), 'tag-suggestions-edit');
 
-        const TOOL_PATH_PREFIX = 'static/tools/';
         const toolId = {{ tool_id }};
         const form = document.getElementById('edit-tool-form');
         const nameInput = document.getElementById('name');
@@ -94,6 +93,15 @@
         let originalFilepath = '';
         let isPastedContent = false;
         let codeEditor = null;
+
+        // filepathからツールURLを生成（最後の2セグメント: {uuid}/index.html）
+        function getToolUrl(filepath) {
+            if (!filepath) return null;
+            const segments = filepath.split('/');
+            if (segments.length < 2) return null;
+            const relativePath = segments.slice(-2).join('/');
+            return '/tools/' + relativePath;
+        }
 
         // エラーメッセージを安全に表示するヘルパー関数
         function showError(errorText) {
@@ -124,13 +132,14 @@
                 toolTypeSelect.value = tool.tool_type || 'html';
                 originalFilepath = tool.filepath;
 
-                // Check if the tool was created by pasting content
-                isPastedContent = originalFilepath.startsWith(TOOL_PATH_PREFIX);
+                // filepathが存在すれば編集可能なコンテンツとみなす
+                const toolUrl = getToolUrl(originalFilepath);
+                isPastedContent = !!toolUrl;
 
                 if (isPastedContent) {
                     // Fetch the HTML content and display a textarea safely
                     sourceSection.innerHTML = '<p aria-busy="true">コンテンツを読み込み中...</p>';
-                    const htmlResponse = await fetch('/' + originalFilepath);
+                    const htmlResponse = await fetch(toolUrl);
                     if (!htmlResponse.ok) throw new Error('HTMLコンテンツの読み込みに失敗しました');
                     const htmlContent = await htmlResponse.text();
 

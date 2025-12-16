@@ -34,8 +34,8 @@ docs/
 .claude/
 
 # Local development
-sql_app.db
-sql_app.db-journal
+tools.db
+tools.db-journal
 .env
 .env.*
 *.log
