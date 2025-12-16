@@ -141,7 +141,10 @@ async def add_security_headers(request: Request, call_next: RequestResponseEndpo
 # 静的ファイルの提供
 app.mount("/static", StaticFiles(directory="static"), name="static")
 # ツールファイルの提供（環境変数で設定可能なディレクトリ）
-app.mount("/tools", StaticFiles(directory=app_settings.tools_dir), name="tools")
+# ディレクトリが存在しない場合は作成（CI環境やクリーンインストール対応）
+tools_dir = Path(app_settings.tools_dir)
+tools_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/tools", StaticFiles(directory=str(tools_dir)), name="tools")
 
 # Jinja2テンプレートの設定
 templates = Jinja2Templates(directory="templates")
