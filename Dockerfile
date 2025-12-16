@@ -33,9 +33,8 @@ RUN apt-get update && \
 # 8. ファイルの所有権を変更
 RUN chown -R appuser:appgroup $APP_HOME
 
-# 9. エントリーポイントスクリプトをコピー
-COPY docker-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+# 9. エントリーポイントスクリプトをコピー（Docker 20.10+）
+COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/
 
 # 10. ポートを公開
 EXPOSE 80

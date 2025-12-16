@@ -7,19 +7,17 @@ set -e
 if [ ! -d "/app/static/tools" ]; then
     mkdir -p /app/static/tools
 fi
-chown -R appuser:appgroup /app/static/tools || echo "Warning: Could not change ownership of /app/static/tools"
 
-# DBファイル（存在する場合）
-if [ -f "/app/tools.db" ]; then
-    chown appuser:appgroup /app/tools.db || echo "Warning: Could not change ownership of /app/tools.db"
+# 所有権がrootの場合のみchownを実行（起動高速化）
+if [ "$(stat -c %u /app/static/tools 2>/dev/null)" = "0" ]; then
+    chown -R appuser:appgroup /app/static/tools || echo "Warning: Could not change ownership of /app/static/tools"
 fi
 
-# DBファイルが存在しない場合、親ディレクトリに書き込み権限が必要
-# /app自体がマウントされている場合に備える
-if [ -w "/app" ] && [ ! -f "/app/tools.db" ]; then
-    # /appがrootで書き込み可能なら、appuserが書き込めるようにする
-    # ただし、アプリケーションファイルの所有権は変更しない
-    touch /app/tools.db
+# DBファイルの処理（存在チェックと所有権設定を統合）
+if [ -f "/app/tools.db" ]; then
+    chown appuser:appgroup /app/tools.db || echo "Warning: Could not change ownership of /app/tools.db"
+else
+    touch /app/tools.db || echo "Warning: Could not create /app/tools.db"
     chown appuser:appgroup /app/tools.db || echo "Warning: Could not change ownership of /app/tools.db"
 fi
 
