@@ -9,6 +9,7 @@ from sqlalchemy.sql.elements import ColumnElement
 from sqlmodel import Session, select, text
 
 from html_tool_manager.core.config import app_settings
+from html_tool_manager.core.file_utils import atomic_write_file
 from html_tool_manager.core.security import is_path_within_base
 from html_tool_manager.models import Tool, ToolCreate
 from html_tool_manager.models.tool import ToolType
@@ -107,10 +108,8 @@ class ToolRepository:
         os.makedirs(tool_dir, mode=0o755, exist_ok=True)
         final_filepath = f"{tool_dir}/index.html"
 
-        # ファイルを作成し、明示的な権限を設定（owner: rw, group/other: r）
-        with open(final_filepath, "w", encoding="utf-8") as f:
-            f.write(final_html)
-        os.chmod(final_filepath, 0o644)
+        # ファイルを原子的に作成し、明示的な権限を設定（owner: rw, group/other: r）
+        atomic_write_file(final_filepath, final_html, mode=0o644)
 
         # DBに保存するモデルのfilepathを更新
         tool_data.filepath = final_filepath

@@ -8,6 +8,7 @@ from sqlmodel import Session
 
 from html_tool_manager.core.config import app_settings
 from html_tool_manager.core.db import get_session
+from html_tool_manager.core.file_utils import atomic_write_file
 from html_tool_manager.core.security import is_path_within_base
 from html_tool_manager.models import (
     SnapshotCreate,
@@ -183,8 +184,7 @@ def restore_snapshot(
 
     # Write file first - if this fails, no DB changes are made
     try:
-        with open(filepath, "w", encoding="utf-8") as f:
-            f.write(content_to_write)
+        atomic_write_file(filepath, content_to_write)
     except PermissionError:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

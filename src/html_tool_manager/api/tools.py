@@ -7,6 +7,7 @@ from sqlmodel import Session
 
 from html_tool_manager.core.config import app_settings
 from html_tool_manager.core.db import get_session
+from html_tool_manager.core.file_utils import atomic_write_file
 from html_tool_manager.core.security import is_path_within_base
 from html_tool_manager.models import SnapshotType, ToolCreate, ToolRead
 from html_tool_manager.models.tool import NAME_MAX_LENGTH
@@ -159,8 +160,18 @@ def update_tool(tool_id: int, tool_data: ToolCreate, session: Session = Depends(
             # コンテンツサイズが上限を超える場合はスナップショット作成をスキップ
             pass
 
-        with open(filepath, "w", encoding="utf-8") as f:
-            f.write(final_html)
+        try:
+            atomic_write_file(filepath, final_html)
+        except PermissionError:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Permission denied when writing file",
+            )
+        except OSError as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to write file: {e}",
+            )
 
     # メタデータを更新（filepathは変更不可 - セキュリティのため既存の値を維持）
     update_data = tool_data.model_dump(exclude_unset=True, exclude={"html_content", "filepath"})
