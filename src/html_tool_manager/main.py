@@ -121,7 +121,7 @@ async def add_security_headers(request: Request, call_next: RequestResponseEndpo
 
     # ツール用HTMLにはCSPを設定しない（iframe sandboxで保護）
     # 理由：ツールごとに使用するCDNが異なり、完全なリストを作成できないため
-    if not request.url.path.startswith("/tools/"):
+    if not request.url.path.startswith("/tool-files/"):
         # アプリケーション本体には完全なCSP
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
