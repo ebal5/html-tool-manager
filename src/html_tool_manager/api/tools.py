@@ -1,3 +1,4 @@
+import os
 from typing import List, Optional
 
 import msgpack
@@ -8,6 +9,7 @@ from sqlmodel import Session
 from html_tool_manager.core.config import app_settings
 from html_tool_manager.core.db import get_session
 from html_tool_manager.models import SnapshotType, ToolCreate, ToolRead
+from html_tool_manager.models.tool import NAME_MAX_LENGTH
 from html_tool_manager.repositories import SnapshotRepository, SortOrder, ToolRepository
 
 from .query_parser import parse_query
@@ -26,6 +28,12 @@ class ToolImportResponse(BaseModel):
     """Response model for tool import."""
 
     imported_count: int
+
+
+class ToolForkRequest(BaseModel):
+    """Request model for forking a tool."""
+
+    name: Optional[str] = None  # 省略時は「{元の名前} (Fork)」
 
 
 # インポートファイルの最大サイズ（10MB）
@@ -93,8 +101,6 @@ def update_tool(tool_id: int, tool_data: ToolCreate, session: Session = Depends(
 
     # html_contentが提供された場合は、既存のファイルを上書き
     if tool_data.html_content is not None:
-        import os
-
         from html_tool_manager.models.tool import ToolType
         from html_tool_manager.templates.react_template import generate_react_html
 
@@ -172,6 +178,80 @@ def delete_tool(tool_id: int, session: Session = Depends(get_session)) -> None:
 
     # 204 No Contentのため、レスポンスボディは返さない
     return None
+
+
+@router.post("/{tool_id}/fork", response_model=ToolRead, status_code=status.HTTP_201_CREATED)
+def fork_tool(
+    tool_id: int,
+    fork_request: ToolForkRequest,
+    session: Session = Depends(get_session),
+) -> ToolRead:
+    """Fork an existing tool to create a copy."""
+    repo = ToolRepository(session)
+
+    # 1. 元ツールの取得
+    original_tool = repo.get_tool(tool_id)
+    if not original_tool:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tool not found")
+
+    # 2. HTMLコンテンツの読み取り（セキュリティ検証付き）
+    filepath = original_tool.filepath
+    tools_dir = app_settings.tools_dir
+    if not filepath or ".." in filepath or not filepath.startswith(f"{tools_dir}/"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid filepath")
+
+    # 実際のパスを解決してtools_dir配下であることを確認
+    real_path = os.path.realpath(filepath)
+    expected_base = os.path.realpath(tools_dir)
+    if not real_path.startswith(expected_base + os.sep):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid filepath: path traversal detected",
+        )
+
+    try:
+        with open(filepath, encoding="utf-8") as f:
+            html_content = f.read()
+    except FileNotFoundError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tool file not found")
+    except (PermissionError, OSError) as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to read file: {e}",
+        )
+
+    # 3. フォーク名の決定
+    if fork_request.name and fork_request.name.strip():
+        fork_name = fork_request.name.strip()
+        # カスタム名の長さをチェック
+        if len(fork_name) > NAME_MAX_LENGTH:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Name must be at most {NAME_MAX_LENGTH} characters",
+            )
+    else:
+        suffix = " (Fork)"
+        max_base_length = NAME_MAX_LENGTH - len(suffix)
+        base_name = (
+            original_tool.name[:max_base_length] if len(original_tool.name) > max_base_length else original_tool.name
+        )
+        fork_name = f"{base_name}{suffix}"
+
+    # 4. ToolCreateの構築
+    tool_create = ToolCreate(
+        name=fork_name,
+        description=original_tool.description,
+        tags=original_tool.tags.copy() if original_tool.tags else [],
+        html_content=html_content,
+        tool_type=original_tool.tool_type,
+    )
+
+    # 5. フォークの作成
+    try:
+        forked_tool = repo.create_tool_with_content(tool_create)
+        return ToolRead.model_validate(forked_tool)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @router.post("/export", response_class=Response)

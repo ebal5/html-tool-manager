@@ -37,6 +37,7 @@
             <div id="tool-tags"></div>
         </div>
         <div class="tool-actions">
+            <button type="button" id="fork-btn" class="secondary outline">フォーク</button>
             <a href="/tools/edit/{{ tool_id }}" role="button" class="secondary outline">編集</a>
         </div>
     </div>
@@ -116,5 +117,92 @@
         }
 
         fetchToolDetails();
+
+        // フォーク機能
+        const forkBtn = document.getElementById('fork-btn');
+        const forkModal = document.getElementById('fork-modal');
+        const forkForm = document.getElementById('fork-form');
+        const forkNameInput = document.getElementById('fork-name');
+        const forkSubmitBtn = document.getElementById('fork-submit-btn');
+        const forkCancelBtn = document.getElementById('fork-cancel-btn');
+        const forkCloseBtn = document.getElementById('fork-modal-close');
+        const forkMessage = document.getElementById('fork-message');
+
+        // モーダルを開く
+        forkBtn.addEventListener('click', function() {
+            forkNameInput.value = '';
+            forkMessage.textContent = '';
+            forkMessage.style.color = '';
+            forkModal.showModal();
+        });
+
+        // モーダルを閉じる
+        function closeForkModal() {
+            forkModal.close();
+        }
+        forkCancelBtn.addEventListener('click', closeForkModal);
+        forkCloseBtn.addEventListener('click', closeForkModal);
+
+        // 背景クリックで閉じる
+        forkModal.addEventListener('click', function(e) {
+            if (e.target === forkModal) {
+                closeForkModal();
+            }
+        });
+
+        // フォーム送信
+        forkForm.addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            forkSubmitBtn.setAttribute('aria-busy', 'true');
+            forkMessage.textContent = '';
+
+            const forkName = forkNameInput.value.trim();
+
+            try {
+                const response = await fetch('/api/tools/' + toolId + '/fork', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: forkName || null })
+                });
+
+                if (response.ok) {
+                    const forkedTool = await response.json();
+                    window.location.href = '/tools/view/' + forkedTool.id;
+                } else {
+                    const errorData = await response.json();
+                    forkMessage.textContent = 'エラー: ' + (errorData.detail || '不明なエラーが発生しました');
+                    forkMessage.style.color = 'var(--pico-color-red-500)';
+                }
+            } catch (error) {
+                forkMessage.textContent = 'エラー: ネットワークエラーが発生しました';
+                forkMessage.style.color = 'var(--pico-color-red-500)';
+                console.error('Error forking tool:', error);
+            } finally {
+                forkSubmitBtn.removeAttribute('aria-busy');
+            }
+        });
     </script>
+
+    <!-- フォークモーダル -->
+    <dialog id="fork-modal" aria-labelledby="fork-modal-title">
+        <article>
+            <header>
+                <button type="button" aria-label="閉じる" rel="prev" id="fork-modal-close"></button>
+                <h3 id="fork-modal-title">ツールをフォーク</h3>
+            </header>
+            <form id="fork-form">
+                <label for="fork-name">新しいツール名</label>
+                <input type="text" id="fork-name" name="fork-name"
+                       placeholder="空の場合は「元の名前 (Fork)」になります"
+                       maxlength="100">
+                <small>最大100文字。空のままで確定すると自動で名前が付けられます。</small>
+            </form>
+            <footer>
+                <button type="button" id="fork-cancel-btn" class="secondary">キャンセル</button>
+                <button type="submit" id="fork-submit-btn" form="fork-form">フォークを作成</button>
+            </footer>
+            <p id="fork-message" style="margin-top: 1rem;"></p>
+        </article>
+    </dialog>
 {% endblock %}
