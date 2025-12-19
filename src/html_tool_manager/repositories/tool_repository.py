@@ -9,6 +9,7 @@ from sqlalchemy.sql.elements import ColumnElement
 from sqlmodel import Session, select, text
 
 from html_tool_manager.core.config import app_settings
+from html_tool_manager.core.security import is_path_within_base
 from html_tool_manager.models import Tool, ToolCreate
 from html_tool_manager.models.tool import ToolType
 from html_tool_manager.templates.react_template import generate_react_html
@@ -239,9 +240,7 @@ class ToolRepository:
             tool_dir = os.path.dirname(filepath)
             # シンボリックリンク攻撃を防止: 実際のパスがtools_dir配下であることを確認
             try:
-                real_dir = os.path.realpath(tool_dir)
-                expected_base = os.path.realpath(tools_dir)
-                if not real_dir.startswith(expected_base + os.sep):
+                if not is_path_within_base(tool_dir, tools_dir):
                     # パストラバーサル攻撃の可能性 - 削除をスキップ
                     pass
                 elif os.path.exists(tool_dir) and os.path.isdir(tool_dir):

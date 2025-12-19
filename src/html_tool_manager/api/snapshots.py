@@ -1,6 +1,5 @@
 """Snapshot API endpoints."""
 
-import os
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -9,6 +8,7 @@ from sqlmodel import Session
 
 from html_tool_manager.core.config import app_settings
 from html_tool_manager.core.db import get_session
+from html_tool_manager.core.security import is_path_within_base
 from html_tool_manager.models import (
     SnapshotCreate,
     SnapshotRead,
@@ -168,9 +168,7 @@ def restore_snapshot(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid filepath")
 
     # Verify real path
-    real_path = os.path.realpath(filepath)
-    expected_base = os.path.realpath(tools_dir)
-    if not real_path.startswith(expected_base + os.sep):
+    if not is_path_within_base(filepath, tools_dir):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid filepath: path traversal detected",

@@ -7,6 +7,7 @@ from sqlmodel import Session
 
 from html_tool_manager.core.config import app_settings
 from html_tool_manager.core.db import get_session
+from html_tool_manager.core.security import is_path_within_base
 from html_tool_manager.models import SnapshotType, ToolCreate, ToolRead
 from html_tool_manager.repositories import SnapshotRepository, SortOrder, ToolRepository
 
@@ -93,8 +94,6 @@ def update_tool(tool_id: int, tool_data: ToolCreate, session: Session = Depends(
 
     # html_contentが提供された場合は、既存のファイルを上書き
     if tool_data.html_content is not None:
-        import os
-
         from html_tool_manager.models.tool import ToolType
         from html_tool_manager.templates.react_template import generate_react_html
 
@@ -114,9 +113,7 @@ def update_tool(tool_id: int, tool_data: ToolCreate, session: Session = Depends(
             )
 
         # 実際のパスを解決してtools_dir配下であることを確認
-        real_path = os.path.realpath(filepath)
-        expected_base = os.path.realpath(tools_dir)
-        if not real_path.startswith(expected_base + os.sep):
+        if not is_path_within_base(filepath, tools_dir):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid filepath: path traversal detected",
