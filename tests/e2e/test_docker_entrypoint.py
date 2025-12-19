@@ -5,8 +5,15 @@ These tests verify that the Docker entrypoint script correctly handles:
 - Permission fixes for root-owned /data
 - Error handling when permission fixes fail
 - Running the app as appuser
+
+Note:
+    These tests require Docker to be available and assume localhost networking
+    works correctly (standard in GitHub Actions ubuntu-latest runners).
+    Tests use dynamic port allocation to avoid conflicts.
+
 """
 
+import socket
 import subprocess
 import time
 import uuid
@@ -18,10 +25,22 @@ import requests
 DOCKER_IMAGE = "html-tool-manager:test"
 
 # Test configuration constants
-TEST_APP_PORT = 8888
 APP_STARTUP_TIMEOUT = 20  # seconds
 DOCKER_COMMAND_TIMEOUT = 30.0  # seconds
+DOCKER_BUILD_TIMEOUT = 300.0  # seconds (5 minutes for image build)
 HTTP_REQUEST_TIMEOUT = 0.5  # seconds
+
+
+def _find_free_port() -> int:
+    """Find a free port to use for testing.
+
+    Returns:
+        An available port number
+
+    """
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(("", 0))
+        return s.getsockname()[1]
 
 
 def _run_docker(
@@ -90,6 +109,25 @@ def _generate_container_name(prefix: str = "test") -> str:
     return f"{prefix}-{uuid.uuid4().hex[:8]}"
 
 
+def _cleanup_container(container_name: str) -> None:
+    """Stop and remove a Docker container.
+
+    Args:
+        container_name: Name of the container to clean up
+
+    """
+    subprocess.run(
+        ["docker", "stop", container_name],
+        capture_output=True,
+        timeout=DOCKER_COMMAND_TIMEOUT,
+    )
+    subprocess.run(
+        ["docker", "rm", "-f", container_name],
+        capture_output=True,
+        timeout=10,
+    )
+
+
 # Skip all tests if Docker is not available
 pytestmark = [
     pytest.mark.e2e,
@@ -119,7 +157,7 @@ def docker_image() -> str:
         ["docker", "build", "-t", DOCKER_IMAGE, "."],
         capture_output=True,
         text=True,
-        timeout=300,
+        timeout=DOCKER_BUILD_TIMEOUT,
     )
     if result.returncode != 0:
         pytest.skip(f"Failed to build Docker image: {result.stderr}")
@@ -192,9 +230,8 @@ class TestDockerEntrypointPermissionFailure:
     def test_exits_on_chown_failure(self, docker_image: str) -> None:
         """Entrypoint should exit with error when chown fails.
 
-        This test uses a read-only mount for /data to simulate chown failure.
-        Note: We mount the host's /tmp as a root-owned read-only directory
-        to force chown to fail.
+        This test simulates chown failure by using a read-only tmpfs mount
+        for /data, which is portable across CI environments.
         """
         result = _run_docker(
             [
@@ -205,10 +242,10 @@ class TestDockerEntrypointPermissionFailure:
                 "/tmp:rw",
                 "--tmpfs",
                 "/run:rw",
-                # Override /data with a read-only volume to force chown failure
-                # Using host's /tmp as a root-owned directory
-                "-v",
-                "/tmp:/data:ro",
+                # Use a read-only tmpfs for /data to simulate chown failure
+                # This is more portable than mounting host /tmp
+                "--tmpfs",
+                "/data:ro,uid=0,gid=0",
                 docker_image,
                 "echo",
                 "should not reach here",
@@ -256,11 +293,18 @@ class TestDockerEntrypointNormalOperation:
 
 
 class TestDockerEntrypointAppStartup:
-    """Tests for application startup via docker-entrypoint.sh."""
+    """Tests for application startup via docker-entrypoint.sh.
+
+    Note:
+        These tests use localhost networking which works in standard Docker
+        configurations including GitHub Actions ubuntu-latest runners.
+
+    """
 
     def test_app_responds_to_http_requests(self, docker_image: str) -> None:
         """The application should start and respond to HTTP requests."""
         container_name = _generate_container_name("test-app-http")
+        host_port = _find_free_port()
 
         # Start the container in the background
         start_result = subprocess.run(
@@ -271,7 +315,7 @@ class TestDockerEntrypointAppStartup:
                 "--name",
                 container_name,
                 "-p",
-                f"{TEST_APP_PORT}:80",
+                f"{host_port}:80",
                 docker_image,
             ],
             capture_output=True,
@@ -284,7 +328,7 @@ class TestDockerEntrypointAppStartup:
 
             # Wait for the application to respond to HTTP requests
             app_ready = False
-            url = f"http://localhost:{TEST_APP_PORT}/"
+            url = f"http://localhost:{host_port}/"
             for _ in range(APP_STARTUP_TIMEOUT):
                 try:
                     response = requests.get(url, timeout=HTTP_REQUEST_TIMEOUT)
@@ -308,23 +352,12 @@ class TestDockerEntrypointAppStartup:
                 )
 
         finally:
-            # Cleanup: stop and remove the container
-            subprocess.run(
-                ["docker", "stop", container_name],
-                capture_output=True,
-                timeout=DOCKER_COMMAND_TIMEOUT,
-            )
-            subprocess.run(
-                ["docker", "rm", "-f", container_name],
-                capture_output=True,
-                timeout=10,
-            )
+            _cleanup_container(container_name)
 
     def test_main_process_runs_as_appuser(self, docker_image: str) -> None:
         """The main process (PID 1) should run as appuser (uid 1000)."""
         container_name = _generate_container_name("test-app-uid")
-        # Use a different port to avoid conflicts with other tests
-        host_port = TEST_APP_PORT + 1
+        host_port = _find_free_port()
 
         # Start the container in the background
         start_result = subprocess.run(
@@ -376,14 +409,4 @@ class TestDockerEntrypointAppStartup:
             assert process_uid == "1000", f"Expected PID 1 to run as uid 1000 (appuser), got {process_uid}"
 
         finally:
-            # Cleanup: stop and remove the container
-            subprocess.run(
-                ["docker", "stop", container_name],
-                capture_output=True,
-                timeout=DOCKER_COMMAND_TIMEOUT,
-            )
-            subprocess.run(
-                ["docker", "rm", "-f", container_name],
-                capture_output=True,
-                timeout=10,
-            )
+            _cleanup_container(container_name)
