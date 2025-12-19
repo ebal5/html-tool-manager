@@ -129,8 +129,10 @@
         const forkCloseBtn = document.getElementById('fork-modal-close');
         const forkMessage = document.getElementById('fork-message');
 
-        // maxlengthを定数から動的に設定
+        // maxlengthを定数から動的に設定（DRY原則: validation.jsのValidationRulesを使用）
         forkNameInput.setAttribute('maxlength', ValidationRules.NAME_MAX_LENGTH);
+        document.getElementById('fork-name-hint').textContent =
+            `最大${ValidationRules.NAME_MAX_LENGTH}文字。空のままで確定すると自動で名前が付けられます。`;
 
         // リアルタイムバリデーションを設定（空の場合はバリデーションをスキップ）
         forkNameInput.addEventListener('blur', function() {
@@ -228,9 +230,8 @@
             <form id="fork-form">
                 <label for="fork-name">新しいツール名</label>
                 <input type="text" id="fork-name" name="fork-name"
-                       placeholder="空の場合は「元の名前 (Fork)」になります"
-                       maxlength="100">
-                <small>最大100文字。空のままで確定すると自動で名前が付けられます。</small>
+                       placeholder="空の場合は「元の名前 (Fork)」になります">
+                <small id="fork-name-hint">空のままで確定すると自動で名前が付けられます。</small>
             </form>
             <footer>
                 <button type="button" id="fork-cancel-btn" class="secondary">キャンセル</button>

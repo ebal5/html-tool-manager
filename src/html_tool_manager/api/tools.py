@@ -43,7 +43,9 @@ MAX_IMPORT_FILE_SIZE = 10 * 1024 * 1024
 def validate_tool_filepath(filepath: str | None) -> str:
     """Validate tool filepath for security.
 
-    Checks for path traversal attacks and ensures the file is within tools_dir.
+    Uses realpath to resolve symlinks and detect path traversal attacks.
+    This is the authoritative check - all paths are validated against the
+    resolved tools_dir to prevent any form of directory escape.
 
     Args:
         filepath: The filepath to validate
@@ -55,20 +57,21 @@ def validate_tool_filepath(filepath: str | None) -> str:
         HTTPException: If the filepath is invalid or path traversal is detected
 
     """
-    tools_dir = app_settings.tools_dir
-    if not filepath or ".." in filepath or not filepath.startswith(f"{tools_dir}/"):
+    if not filepath:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid filepath",
         )
 
-    # 実際のパスを解決してtools_dir配下であることを確認
+    # realpathで実際のパスを解決し、tools_dir配下であることを確認
+    # これによりシンボリックリンク攻撃やパストラバーサル（..など）を防止
+    tools_dir = app_settings.tools_dir
     real_path = os.path.realpath(filepath)
     expected_base = os.path.realpath(tools_dir)
     if not real_path.startswith(expected_base + os.sep):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid filepath: path traversal detected",
+            detail="Invalid filepath",
         )
 
     return filepath
@@ -221,10 +224,10 @@ def fork_tool(
             html_content = f.read()
     except FileNotFoundError:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tool file not found")
-    except (PermissionError, OSError) as e:
+    except (PermissionError, OSError):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to read file: {e}",
+            detail="Failed to read tool file due to permission or system error",
         )
 
     # 3. フォーク名の決定

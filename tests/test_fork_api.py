@@ -186,8 +186,8 @@ class TestForkAPI:
 
         assert response.status_code == 400
 
-    def test_fork_preserves_tags_independently(self, client: TestClient, tool_with_file: Tool):
-        """Test that forked tool's tags are independent of original."""
+    def test_fork_preserves_tags(self, client: TestClient, tool_with_file: Tool):
+        """Test that forked tool preserves original tags."""
         response = client.post(
             f"/api/tools/{tool_with_file.id}/fork",
             json={"name": "Independent Tags"},
