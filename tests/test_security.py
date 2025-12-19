@@ -1,6 +1,113 @@
 """Security tests for the HTML Tool Manager."""
 
+import os
+
+import pytest
+
+from html_tool_manager.core.security import is_path_within_base
 from html_tool_manager.repositories.tool_repository import _escape_fts5_term
+
+
+class TestIsPathWithinBase:
+    """Tests for is_path_within_base function (cross-platform path traversal detection)."""
+
+    def test_path_within_base_returns_true(self, tmp_path):
+        """Test valid path within base directory returns True."""
+        base = tmp_path / "base"
+        base.mkdir()
+        target = base / "subdir" / "file.txt"
+        target.parent.mkdir(parents=True)
+        target.touch()
+
+        assert is_path_within_base(str(target), str(base)) is True
+
+    def test_path_outside_base_returns_false(self, tmp_path):
+        """Test path outside base directory returns False."""
+        base = tmp_path / "base"
+        base.mkdir()
+        outside = tmp_path / "outside" / "file.txt"
+        outside.parent.mkdir(parents=True)
+        outside.touch()
+
+        assert is_path_within_base(str(outside), str(base)) is False
+
+    def test_path_traversal_with_dotdot_returns_false(self, tmp_path):
+        """Test path with .. that escapes base returns False."""
+        base = tmp_path / "base"
+        base.mkdir()
+        # Create a path that uses .. to escape
+        traversal_path = str(base / ".." / "outside")
+
+        assert is_path_within_base(traversal_path, str(base)) is False
+
+    def test_symlink_pointing_outside_returns_false(self, tmp_path):
+        """Test symlink pointing outside base directory returns False."""
+        base = tmp_path / "base"
+        base.mkdir()
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        outside_file = outside / "secret.txt"
+        outside_file.touch()
+
+        # Create symlink inside base pointing outside
+        symlink = base / "link"
+        symlink.symlink_to(outside_file)
+
+        assert is_path_within_base(str(symlink), str(base)) is False
+
+    def test_base_path_itself_returns_true(self, tmp_path):
+        """Test that base path itself is considered within base."""
+        base = tmp_path / "base"
+        base.mkdir()
+
+        # commonpath(['/a', '/a']) == '/a' so this returns True
+        assert is_path_within_base(str(base), str(base)) is True
+
+    def test_similar_prefix_not_matched(self, tmp_path):
+        """Test that similar prefix doesn't match (e.g., /tools vs /tools_evil).
+
+        This is the bug that startswith() had - it would incorrectly match
+        /tools_evil as being within /tools because the string starts with /tools.
+        """
+        tools = tmp_path / "tools"
+        tools.mkdir()
+        tools_evil = tmp_path / "tools_evil"
+        tools_evil.mkdir()
+        evil_file = tools_evil / "malicious.txt"
+        evil_file.touch()
+
+        # This was the original bug - startswith would incorrectly return True
+        assert is_path_within_base(str(evil_file), str(tools)) is False
+
+    def test_nonexistent_path_within_base_returns_true(self, tmp_path):
+        """Test nonexistent path within base returns True (realpath works on nonexistent)."""
+        base = tmp_path / "base"
+        base.mkdir()
+        nonexistent = base / "does" / "not" / "exist.txt"
+
+        # os.path.realpath() works on nonexistent paths
+        result = is_path_within_base(str(nonexistent), str(base))
+        assert result is True
+
+    def test_empty_target_path_returns_false(self, tmp_path):
+        """Test empty target path returns False."""
+        base = tmp_path / "base"
+        base.mkdir()
+
+        assert is_path_within_base("", str(base)) is False
+
+    def test_empty_base_path_returns_false(self, tmp_path):
+        """Test empty base path returns False."""
+        target = tmp_path / "target"
+        target.mkdir()
+
+        assert is_path_within_base(str(target), "") is False
+
+    @pytest.mark.skipif(os.name != "nt", reason="Windows-specific test")
+    def test_different_drives_returns_false(self):
+        """Test paths on different Windows drives returns False."""
+        # This test only runs on Windows
+        assert is_path_within_base("D:\\evil\\file.txt", "C:\\safe") is False
 
 
 class TestFTS5Injection:

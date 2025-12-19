@@ -1,4 +1,3 @@
-import os
 from typing import List, Optional
 
 import msgpack
@@ -8,6 +7,7 @@ from sqlmodel import Session
 
 from html_tool_manager.core.config import app_settings
 from html_tool_manager.core.db import get_session
+from html_tool_manager.core.security import is_path_within_base
 from html_tool_manager.models import SnapshotType, ToolCreate, ToolRead
 from html_tool_manager.models.tool import NAME_MAX_LENGTH
 from html_tool_manager.repositories import SnapshotRepository, SortOrder, ToolRepository
@@ -41,11 +41,11 @@ MAX_IMPORT_FILE_SIZE = 10 * 1024 * 1024
 
 
 def validate_tool_filepath(filepath: str | None) -> str:
-    """Validate tool filepath for security.
+    r"""Validate tool filepath for security.
 
-    Uses realpath to resolve symlinks and detect path traversal attacks.
-    This is the authoritative check - all paths are validated against the
-    resolved tools_dir to prevent any form of directory escape.
+    Uses is_path_within_base with os.path.commonpath() for cross-platform
+    path traversal detection. This is more robust than startswith() checks,
+    especially on Windows where both '/' and '\\' are valid path separators.
 
     Args:
         filepath: The filepath to validate
@@ -57,24 +57,14 @@ def validate_tool_filepath(filepath: str | None) -> str:
         HTTPException: If the filepath is invalid or path traversal is detected
 
     """
-    if not filepath:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid filepath",
-        )
-
-    # realpathで実際のパスを解決し、tools_dir配下であることを確認
-    # これによりシンボリックリンク攻撃やパストラバーサル（..など）を防止
     tools_dir = app_settings.tools_dir
-    real_path = os.path.realpath(filepath)
-    expected_base = os.path.realpath(tools_dir)
-    if not real_path.startswith(expected_base + os.sep):
+    if not is_path_within_base(filepath or "", tools_dir):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid filepath",
         )
 
-    return filepath
+    return filepath  # type: ignore[return-value]
 
 
 @router.post("/", response_model=ToolRead, status_code=status.HTTP_201_CREATED)
