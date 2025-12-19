@@ -13,13 +13,14 @@ Note:
 
 """
 
-import socket
 import subprocess
 import time
 import uuid
 
 import pytest
 import requests
+
+from tests.e2e.conftest import _find_free_port
 
 # Docker image tag used for testing
 DOCKER_IMAGE = "html-tool-manager:test"
@@ -29,18 +30,7 @@ APP_STARTUP_TIMEOUT = 20  # seconds
 DOCKER_COMMAND_TIMEOUT = 30.0  # seconds
 DOCKER_BUILD_TIMEOUT = 300.0  # seconds (5 minutes for image build)
 HTTP_REQUEST_TIMEOUT = 0.5  # seconds
-
-
-def _find_free_port() -> int:
-    """Find a free port to use for testing.
-
-    Returns:
-        An available port number
-
-    """
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(("", 0))
-        return s.getsockname()[1]
+POLLING_INTERVAL_SECONDS = 1  # seconds between HTTP health check polls
 
 
 def _run_docker(
@@ -250,6 +240,7 @@ class TestDockerEntrypointPermissionFailure:
                 "echo",
                 "should not reach here",
             ],
+            # Shorter timeout: entrypoint should fail quickly on chown error
             timeout=10,
         )
 
@@ -337,7 +328,7 @@ class TestDockerEntrypointAppStartup:
                         break
                 except requests.exceptions.RequestException:
                     pass
-                time.sleep(1)
+                time.sleep(POLLING_INTERVAL_SECONDS)
 
             if not app_ready:
                 # Get logs for debugging
@@ -388,7 +379,7 @@ class TestDockerEntrypointAppStartup:
                         break
                 except requests.exceptions.RequestException:
                     pass
-                time.sleep(1)
+                time.sleep(POLLING_INTERVAL_SECONDS)
 
             # Verify the main process (PID 1) is running as appuser (uid 1000)
             # Use /proc/1/status since ps is not available in slim images
