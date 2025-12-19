@@ -235,9 +235,9 @@ class ToolRepository:
 
         # DBコミット成功後にファイルとディレクトリを削除
         # これによりDB削除失敗時にファイルだけ消える問題を防ぐ
-        tools_dir = app_settings.tools_dir
-        if filepath and filepath.startswith(f"{tools_dir}/"):
+        if filepath:
             tool_dir = os.path.dirname(filepath)
+            tools_dir = app_settings.tools_dir
             # シンボリックリンク攻撃を防止: 実際のパスがtools_dir配下であることを確認
             try:
                 if not is_path_within_base(tool_dir, tools_dir):
