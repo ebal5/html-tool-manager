@@ -106,13 +106,6 @@ def update_tool(tool_id: int, tool_data: ToolCreate, session: Session = Depends(
         # TOCTOU対策: ファイルパスを検証してシンボリックリンク攻撃を防止
         filepath = tool_to_update.filepath
         tools_dir = app_settings.tools_dir
-        if not filepath or ".." in filepath or not filepath.startswith(f"{tools_dir}/"):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid filepath",
-            )
-
-        # 実際のパスを解決してtools_dir配下であることを確認
         if not is_path_within_base(filepath, tools_dir):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

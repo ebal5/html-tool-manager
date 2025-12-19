@@ -161,13 +161,9 @@ def restore_snapshot(
     if not snapshot:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Snapshot not found")
 
-    # Validate filepath first
+    # Validate filepath (cross-platform path traversal detection)
     filepath = tool.filepath
     tools_dir = app_settings.tools_dir
-    if not filepath or ".." in filepath or not filepath.startswith(f"{tools_dir}/"):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid filepath")
-
-    # Verify real path
     if not is_path_within_base(filepath, tools_dir):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
