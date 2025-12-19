@@ -9,6 +9,7 @@ These tests verify that the Docker entrypoint script correctly handles:
 
 import subprocess
 import time
+import uuid
 
 import pytest
 import requests
@@ -16,10 +17,16 @@ import requests
 # Docker image tag used for testing
 DOCKER_IMAGE = "html-tool-manager:test"
 
+# Test configuration constants
+TEST_APP_PORT = 8888
+APP_STARTUP_TIMEOUT = 20  # seconds
+DOCKER_COMMAND_TIMEOUT = 30.0  # seconds
+HTTP_REQUEST_TIMEOUT = 0.5  # seconds
+
 
 def _run_docker(
     args: list[str],
-    timeout: float = 30.0,
+    timeout: float = DOCKER_COMMAND_TIMEOUT,
     capture_output: bool = True,
 ) -> subprocess.CompletedProcess[str]:
     """Run a docker command and return the result.
@@ -68,6 +75,19 @@ def _check_image_exists(image: str) -> bool:
         return result.returncode == 0
     except (subprocess.TimeoutExpired, FileNotFoundError):
         return False
+
+
+def _generate_container_name(prefix: str = "test") -> str:
+    """Generate a unique container name to avoid collisions.
+
+    Args:
+        prefix: Prefix for the container name
+
+    Returns:
+        Unique container name
+
+    """
+    return f"{prefix}-{uuid.uuid4().hex[:8]}"
 
 
 # Skip all tests if Docker is not available
@@ -173,12 +193,12 @@ class TestDockerEntrypointPermissionFailure:
         """Entrypoint should exit with error when chown fails.
 
         This test uses a read-only mount for /data to simulate chown failure.
+        Note: We mount the host's /tmp as a root-owned read-only directory
+        to force chown to fail.
         """
-        # Create a temporary directory and mount it as read-only
-        # This will cause chown to fail
         result = _run_docker(
             [
-                # Mount /data as read-only (using tmpfs with ro)
+                # Mount the entire container filesystem as read-only
                 "--read-only",
                 # Need tmpfs for /tmp and other writable areas
                 "--tmpfs",
@@ -186,7 +206,7 @@ class TestDockerEntrypointPermissionFailure:
                 "--tmpfs",
                 "/run:rw",
                 # Override /data with a read-only volume to force chown failure
-                # We need to mount a volume owned by root
+                # Using host's /tmp as a root-owned directory
                 "-v",
                 "/tmp:/data:ro",
                 docker_image,
@@ -198,9 +218,9 @@ class TestDockerEntrypointPermissionFailure:
 
         # The entrypoint should have failed
         assert result.returncode != 0
-        # Check for error message about ownership change
+        # Check for the specific error message from docker-entrypoint.sh
         output = result.stdout + result.stderr
-        assert "ownership" in output.lower() or "chown" in output.lower() or "read-only" in output.lower()
+        assert "Failed to change ownership" in output or "chown" in output.lower()
 
 
 class TestDockerEntrypointNormalOperation:
@@ -234,10 +254,13 @@ class TestDockerEntrypointNormalOperation:
         uid = result.stdout.strip()
         assert uid == "1000", f"Expected uid 1000, got {uid}"
 
-    def test_app_starts_successfully(self, docker_image: str) -> None:
-        """The application should start successfully."""
-        container_name = "test-entrypoint-app"
-        host_port = 8888
+
+class TestDockerEntrypointAppStartup:
+    """Tests for application startup via docker-entrypoint.sh."""
+
+    def test_app_responds_to_http_requests(self, docker_image: str) -> None:
+        """The application should start and respond to HTTP requests."""
+        container_name = _generate_container_name("test-app-http")
 
         # Start the container in the background
         start_result = subprocess.run(
@@ -248,12 +271,12 @@ class TestDockerEntrypointNormalOperation:
                 "--name",
                 container_name,
                 "-p",
-                f"{host_port}:80",
+                f"{TEST_APP_PORT}:80",
                 docker_image,
             ],
             capture_output=True,
             text=True,
-            timeout=30,
+            timeout=DOCKER_COMMAND_TIMEOUT,
         )
 
         try:
@@ -261,10 +284,10 @@ class TestDockerEntrypointNormalOperation:
 
             # Wait for the application to respond to HTTP requests
             app_ready = False
-            url = f"http://localhost:{host_port}/"
-            for _ in range(30):  # Wait up to 30 seconds
+            url = f"http://localhost:{TEST_APP_PORT}/"
+            for _ in range(APP_STARTUP_TIMEOUT):
                 try:
-                    response = requests.get(url, timeout=1)
+                    response = requests.get(url, timeout=HTTP_REQUEST_TIMEOUT)
                     if response.status_code == 200:
                         app_ready = True
                         break
@@ -280,7 +303,59 @@ class TestDockerEntrypointNormalOperation:
                     text=True,
                     timeout=5,
                 )
-                pytest.fail(f"Application did not become ready within timeout. Logs: {logs.stdout}{logs.stderr}")
+                pytest.fail(
+                    f"Application did not become ready within {APP_STARTUP_TIMEOUT}s. Logs: {logs.stdout}{logs.stderr}"
+                )
+
+        finally:
+            # Cleanup: stop and remove the container
+            subprocess.run(
+                ["docker", "stop", container_name],
+                capture_output=True,
+                timeout=DOCKER_COMMAND_TIMEOUT,
+            )
+            subprocess.run(
+                ["docker", "rm", "-f", container_name],
+                capture_output=True,
+                timeout=10,
+            )
+
+    def test_main_process_runs_as_appuser(self, docker_image: str) -> None:
+        """The main process (PID 1) should run as appuser (uid 1000)."""
+        container_name = _generate_container_name("test-app-uid")
+        # Use a different port to avoid conflicts with other tests
+        host_port = TEST_APP_PORT + 1
+
+        # Start the container in the background
+        start_result = subprocess.run(
+            [
+                "docker",
+                "run",
+                "-d",
+                "--name",
+                container_name,
+                "-p",
+                f"{host_port}:80",
+                docker_image,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=DOCKER_COMMAND_TIMEOUT,
+        )
+
+        try:
+            assert start_result.returncode == 0, f"Failed to start: {start_result.stderr}"
+
+            # Wait for the application to start
+            url = f"http://localhost:{host_port}/"
+            for _ in range(APP_STARTUP_TIMEOUT):
+                try:
+                    response = requests.get(url, timeout=HTTP_REQUEST_TIMEOUT)
+                    if response.status_code == 200:
+                        break
+                except requests.exceptions.RequestException:
+                    pass
+                time.sleep(1)
 
             # Verify the main process (PID 1) is running as appuser (uid 1000)
             # Use /proc/1/status since ps is not available in slim images
@@ -305,7 +380,7 @@ class TestDockerEntrypointNormalOperation:
             subprocess.run(
                 ["docker", "stop", container_name],
                 capture_output=True,
-                timeout=30,
+                timeout=DOCKER_COMMAND_TIMEOUT,
             )
             subprocess.run(
                 ["docker", "rm", "-f", container_name],

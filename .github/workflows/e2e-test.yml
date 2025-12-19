@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - "v*.*.*"
+  pull_request:
+    paths:
+      - "Dockerfile"
+      - "docker-entrypoint.sh"
+      - "tests/e2e/**"
+      - ".github/workflows/e2e-test.yml"
   workflow_dispatch:
 
 jobs:
