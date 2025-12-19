@@ -97,9 +97,29 @@ uv run mypy src/
 | GET | /api/tools/{id} | 詳細取得 |
 | PUT | /api/tools/{id} | 更新 |
 | DELETE | /api/tools/{id} | 削除 |
+| POST | /api/tools/{id}/fork | ツール複製（フォーク） |
 | GET | /api/tools/tags/suggest | タグ候補取得（?q=） |
 | POST | /api/tools/export | エクスポート |
 | POST | /api/tools/import | インポート |
+
+### フォークAPI
+
+既存のツールを複製して新しいツールを作成する。
+
+**エンドポイント**: `POST /api/tools/{id}/fork`
+
+**リクエストボディ**:
+```json
+{
+  "name": "新しいツール名"  // 省略または空の場合は「元の名前 (Fork)」
+}
+```
+
+**レスポンス**: 201 Created + 新しいツールの`ToolRead`
+
+**エラー**:
+- 404: 元ツールが存在しない、またはファイルが見つからない
+- 400: 名前が長すぎる（100文字超）、または無効なファイルパス
 
 ## 検索クエリ構文
 

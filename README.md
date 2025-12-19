@@ -93,7 +93,7 @@
 docker pull ghcr.io/ebal5/html-tool-manager:latest
 
 # 特定バージョンを取得
-docker pull ghcr.io/ebal5/html-tool-manager:0.2.0
+docker pull ghcr.io/ebal5/html-tool-manager:0.3.0
 ```
 
 **コンテナの実行:**
