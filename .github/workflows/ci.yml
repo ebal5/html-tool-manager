@@ -61,7 +61,7 @@ jobs:
         run: uv sync --frozen
 
       - name: Run tests
-        run: uv run pytest -m "not e2e"
+        run: uv run pytest -m "not e2e" -n auto
 
   type-check:
     runs-on: ubuntu-latest

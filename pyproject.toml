@@ -80,6 +80,7 @@ cmd = "pytest -v -m e2e --headed"
 dev = [
     "pytest",
     "pytest-cov",
+    "pytest-xdist",  # 並列テスト実行
     "pytest-playwright",
     "poethepoet",
     "httpx",

@@ -105,9 +105,9 @@ argument-hint: [version: patch|minor|major|x.y.z]
    uv run mypy src/
    ```
 
-4. **テスト実行**
+4. **テスト実行**（E2Eはタグプッシュ時にCIで実行されるため除外、並列実行）
    ```bash
-   uv run pytest -v
+   uv run pytest -v -m "not e2e" -n auto
    ```
 
 5. **セキュリティスキャン**
