@@ -20,7 +20,7 @@ def atomic_write_file(filepath: str, content: str, mode: int = 0o644) -> None:
         PermissionError: If permission is denied.
 
     """
-    dir_path = os.path.dirname(filepath)
+    dir_path = os.path.dirname(filepath) or "."
 
     # Create temp file in the same directory for atomic replace
     temp_fd, temp_path = tempfile.mkstemp(dir=dir_path, text=True)

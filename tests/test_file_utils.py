@@ -157,3 +157,18 @@ Line 3
         atomic_write_file(str(filepath), content)
 
         assert filepath.read_text(encoding="utf-8") == content
+
+    def test_fails_when_directory_does_not_exist(self, tmp_path):
+        """Test that FileNotFoundError is raised when parent directory doesn't exist."""
+        filepath = tmp_path / "nonexistent" / "test.txt"
+
+        with pytest.raises(FileNotFoundError):
+            atomic_write_file(str(filepath), "content")
+
+    def test_filename_only_uses_current_directory(self, tmp_path, monkeypatch):
+        """Test that filename without directory uses current directory."""
+        monkeypatch.chdir(tmp_path)
+
+        atomic_write_file("test.txt", "content")
+
+        assert (tmp_path / "test.txt").read_text(encoding="utf-8") == "content"
