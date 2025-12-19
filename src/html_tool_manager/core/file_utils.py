@@ -11,11 +11,12 @@ def atomic_write_file(filepath: str, content: str, mode: int = 0o644) -> None:
     This prevents file corruption if the process crashes during write.
 
     Args:
-        filepath: The target file path to write to.
+        filepath: The target file path to write to. Parent directory must exist.
         content: The content to write.
         mode: File permission mode (default: 0o644).
 
     Raises:
+        FileNotFoundError: If parent directory does not exist.
         OSError: If file operations fail.
         PermissionError: If permission is denied.
 

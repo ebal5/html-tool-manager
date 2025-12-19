@@ -160,7 +160,18 @@ def update_tool(tool_id: int, tool_data: ToolCreate, session: Session = Depends(
             # コンテンツサイズが上限を超える場合はスナップショット作成をスキップ
             pass
 
-        atomic_write_file(filepath, final_html)
+        try:
+            atomic_write_file(filepath, final_html)
+        except PermissionError:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Permission denied when writing file",
+            )
+        except OSError as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to write file: {e}",
+            )
 
     # メタデータを更新（filepathは変更不可 - セキュリティのため既存の値を維持）
     update_data = tool_data.model_dump(exclude_unset=True, exclude={"html_content", "filepath"})
