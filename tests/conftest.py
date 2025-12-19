@@ -1,7 +1,10 @@
+from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, StaticPool, create_engine
 
+from html_tool_manager.core import config as core_config
 from html_tool_manager.core import db as core_db
 from html_tool_manager.core.db import get_session
 from html_tool_manager.main import app
@@ -50,3 +53,22 @@ def client_fixture(session: Session):
     """Create a test client that depends on the session fixture."""
     client = TestClient(app)
     yield client
+
+
+@pytest.fixture(name="test_tools_dir")
+def test_tools_dir_fixture(tmp_path: Path):
+    """Override tools_dir with a temporary directory for testing.
+
+    This prevents tests from polluting the production static/tools directory.
+    """
+    tools_dir = tmp_path / "tools"
+    tools_dir.mkdir()
+
+    # Override app_settings.tools_dir
+    original_tools_dir = core_config.app_settings.tools_dir
+    core_config.app_settings.tools_dir = str(tools_dir)
+
+    yield tools_dir
+
+    # Restore original value
+    core_config.app_settings.tools_dir = original_tools_dir
