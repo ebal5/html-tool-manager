@@ -46,6 +46,7 @@
         <p aria-busy="true">ツールを読み込み中...</p>
     </div>
 
+    <script src="/static/js/validation.js"></script>
     <script>
         const toolId = {{ tool_id }};
         const toolNameEl = document.getElementById('tool-name');
@@ -128,9 +129,30 @@
         const forkCloseBtn = document.getElementById('fork-modal-close');
         const forkMessage = document.getElementById('fork-message');
 
+        // maxlengthを定数から動的に設定
+        forkNameInput.setAttribute('maxlength', ValidationRules.NAME_MAX_LENGTH);
+
+        // リアルタイムバリデーションを設定（空の場合はバリデーションをスキップ）
+        forkNameInput.addEventListener('blur', function() {
+            if (this.value.trim()) {
+                const result = validateName(this.value);
+                if (!result.valid) {
+                    this.setAttribute('aria-invalid', 'true');
+                } else {
+                    this.removeAttribute('aria-invalid');
+                }
+            } else {
+                this.removeAttribute('aria-invalid');
+            }
+        });
+        forkNameInput.addEventListener('input', function() {
+            this.removeAttribute('aria-invalid');
+        });
+
         // モーダルを開く
         forkBtn.addEventListener('click', function() {
             forkNameInput.value = '';
+            forkNameInput.removeAttribute('aria-invalid');
             forkMessage.textContent = '';
             forkMessage.style.color = '';
             forkModal.showModal();
@@ -158,6 +180,18 @@
             forkMessage.textContent = '';
 
             const forkName = forkNameInput.value.trim();
+
+            // クライアントサイドバリデーション（空の場合はスキップ - サーバーでデフォルト名が使用される）
+            if (forkName) {
+                const nameResult = validateName(forkName);
+                if (!nameResult.valid) {
+                    forkMessage.textContent = nameResult.error;
+                    forkMessage.style.color = 'var(--pico-color-red-500)';
+                    forkNameInput.setAttribute('aria-invalid', 'true');
+                    forkSubmitBtn.removeAttribute('aria-busy');
+                    return;
+                }
+            }
 
             try {
                 const response = await fetch('/api/tools/' + toolId + '/fork', {

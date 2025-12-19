@@ -40,6 +40,40 @@ class ToolForkRequest(BaseModel):
 MAX_IMPORT_FILE_SIZE = 10 * 1024 * 1024
 
 
+def validate_tool_filepath(filepath: str | None) -> str:
+    """Validate tool filepath for security.
+
+    Checks for path traversal attacks and ensures the file is within tools_dir.
+
+    Args:
+        filepath: The filepath to validate
+
+    Returns:
+        The validated filepath
+
+    Raises:
+        HTTPException: If the filepath is invalid or path traversal is detected
+
+    """
+    tools_dir = app_settings.tools_dir
+    if not filepath or ".." in filepath or not filepath.startswith(f"{tools_dir}/"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid filepath",
+        )
+
+    # 実際のパスを解決してtools_dir配下であることを確認
+    real_path = os.path.realpath(filepath)
+    expected_base = os.path.realpath(tools_dir)
+    if not real_path.startswith(expected_base + os.sep):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid filepath: path traversal detected",
+        )
+
+    return filepath
+
+
 @router.post("/", response_model=ToolRead, status_code=status.HTTP_201_CREATED)
 def create_tool(tool_data: ToolCreate, session: Session = Depends(get_session)) -> ToolRead:
     """Create a new tool."""
@@ -111,22 +145,7 @@ def update_tool(tool_id: int, tool_data: ToolCreate, session: Session = Depends(
             final_html = tool_data.html_content
 
         # TOCTOU対策: ファイルパスを検証してシンボリックリンク攻撃を防止
-        filepath = tool_to_update.filepath
-        tools_dir = app_settings.tools_dir
-        if not filepath or ".." in filepath or not filepath.startswith(f"{tools_dir}/"):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid filepath",
-            )
-
-        # 実際のパスを解決してtools_dir配下であることを確認
-        real_path = os.path.realpath(filepath)
-        expected_base = os.path.realpath(tools_dir)
-        if not real_path.startswith(expected_base + os.sep):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid filepath: path traversal detected",
-            )
+        filepath = validate_tool_filepath(tool_to_update.filepath)
 
         # 現在の内容を読み取り、変更がある場合のみスナップショット作成
         try:
@@ -195,19 +214,7 @@ def fork_tool(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tool not found")
 
     # 2. HTMLコンテンツの読み取り（セキュリティ検証付き）
-    filepath = original_tool.filepath
-    tools_dir = app_settings.tools_dir
-    if not filepath or ".." in filepath or not filepath.startswith(f"{tools_dir}/"):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid filepath")
-
-    # 実際のパスを解決してtools_dir配下であることを確認
-    real_path = os.path.realpath(filepath)
-    expected_base = os.path.realpath(tools_dir)
-    if not real_path.startswith(expected_base + os.sep):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid filepath: path traversal detected",
-        )
+    filepath = validate_tool_filepath(original_tool.filepath)
 
     try:
         with open(filepath, encoding="utf-8") as f:
