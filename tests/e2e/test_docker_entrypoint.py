@@ -9,28 +9,41 @@ These tests verify that the Docker entrypoint script correctly handles:
 Note:
     These tests require Docker to be available and assume localhost networking
     works correctly (standard in GitHub Actions ubuntu-latest runners).
-    Tests use dynamic port allocation to avoid conflicts.
+    Tests use Docker's automatic port allocation to avoid TOCTOU race conditions.
+
+Environment Variables:
+    E2E_APP_STARTUP_TIMEOUT: Override the default app startup timeout in seconds.
+                             Default is 30 seconds.
 
 """
 
+import os
 import subprocess
 import time
 import uuid
+from collections.abc import Generator
+from dataclasses import dataclass
 
 import pytest
 import requests
 
-from tests.e2e.conftest import _find_free_port
-
 # Docker image tag used for testing
 DOCKER_IMAGE = "html-tool-manager:test"
 
-# Test configuration constants
-APP_STARTUP_TIMEOUT = 20  # seconds
+# Test configuration constants (all floats for consistency)
+APP_STARTUP_TIMEOUT = float(os.environ.get("E2E_APP_STARTUP_TIMEOUT", "30"))
 DOCKER_COMMAND_TIMEOUT = 30.0  # seconds
 DOCKER_BUILD_TIMEOUT = 300.0  # seconds (5 minutes for image build)
 HTTP_REQUEST_TIMEOUT = 0.5  # seconds
-POLLING_INTERVAL_SECONDS = 1  # seconds between HTTP health check polls
+POLLING_INTERVAL_SECONDS = 1.0  # seconds between HTTP health check polls
+
+
+@dataclass
+class RunningContainer:
+    """Information about a running Docker container."""
+
+    name: str
+    host_port: int
 
 
 def _run_docker(
@@ -118,6 +131,61 @@ def _cleanup_container(container_name: str) -> None:
     )
 
 
+def _get_container_port(container_name: str, container_port: int = 80) -> int:
+    """Get the host port mapped to a container port.
+
+    Uses Docker's automatic port allocation to avoid TOCTOU race conditions.
+
+    Args:
+        container_name: Name of the container
+        container_port: The container port to look up
+
+    Returns:
+        The host port number
+
+    Raises:
+        RuntimeError: If the port cannot be determined
+
+    """
+    result = subprocess.run(
+        ["docker", "port", container_name, str(container_port)],
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"Failed to get port: {result.stderr}")
+
+    # Output format: "0.0.0.0:12345" or ":::12345"
+    port_mapping = result.stdout.strip()
+    # Extract port from the end after the last colon
+    port_str = port_mapping.rsplit(":", 1)[-1]
+    return int(port_str)
+
+
+def _wait_for_app_ready(url: str, timeout: float = APP_STARTUP_TIMEOUT) -> bool:
+    """Wait for the application to respond to HTTP requests.
+
+    Args:
+        url: The URL to check
+        timeout: Maximum time to wait in seconds
+
+    Returns:
+        True if app is ready, False if timeout reached
+
+    """
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        try:
+            response = requests.get(url, timeout=HTTP_REQUEST_TIMEOUT)
+            if response.status_code == 200:
+                return True
+        except requests.exceptions.RequestException:
+            pass
+        time.sleep(POLLING_INTERVAL_SECONDS)
+    return False
+
+
 # Skip all tests if Docker is not available
 pytestmark = [
     pytest.mark.e2e,
@@ -153,6 +221,64 @@ def docker_image() -> str:
         pytest.skip(f"Failed to build Docker image: {result.stderr}")
 
     return DOCKER_IMAGE
+
+
+@pytest.fixture
+def running_app_container(docker_image: str) -> Generator[RunningContainer, None, None]:
+    """Start a container running the application and yield its info.
+
+    This fixture manages the container lifecycle properly, ensuring cleanup
+    even if tests crash.
+
+    Yields:
+        RunningContainer with name and host port
+
+    """
+    container_name = _generate_container_name("test-app")
+
+    # Start the container with automatic port allocation
+    # Using -p 80 (without host port) lets Docker assign an available port
+    start_result = subprocess.run(
+        [
+            "docker",
+            "run",
+            "-d",
+            "--name",
+            container_name,
+            "-p",
+            "80",  # Docker assigns random available host port
+            docker_image,
+        ],
+        capture_output=True,
+        text=True,
+        timeout=DOCKER_COMMAND_TIMEOUT,
+    )
+
+    if start_result.returncode != 0:
+        pytest.fail(f"Failed to start container: {start_result.stderr}")
+
+    try:
+        # Get the automatically assigned port
+        host_port = _get_container_port(container_name, 80)
+
+        # Wait for the application to be ready
+        url = f"http://localhost:{host_port}/"
+        if not _wait_for_app_ready(url):
+            # Get logs for debugging
+            logs = subprocess.run(
+                ["docker", "logs", container_name],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            pytest.fail(
+                f"Application did not become ready within {APP_STARTUP_TIMEOUT}s. Logs: {logs.stdout}{logs.stderr}"
+            )
+
+        yield RunningContainer(name=container_name, host_port=host_port)
+
+    finally:
+        _cleanup_container(container_name)
 
 
 class TestDockerEntrypointSymlinkDetection:
@@ -287,117 +413,36 @@ class TestDockerEntrypointAppStartup:
     """Tests for application startup via docker-entrypoint.sh.
 
     Note:
-        These tests use localhost networking which works in standard Docker
-        configurations including GitHub Actions ubuntu-latest runners.
+        These tests use the running_app_container fixture which handles
+        container lifecycle, port allocation, and startup verification.
 
     """
 
-    def test_app_responds_to_http_requests(self, docker_image: str) -> None:
+    def test_app_responds_to_http_requests(self, running_app_container: RunningContainer) -> None:
         """The application should start and respond to HTTP requests."""
-        container_name = _generate_container_name("test-app-http")
-        host_port = _find_free_port()
+        # The fixture already verified the app is responding
+        # Double-check with an explicit request
+        url = f"http://localhost:{running_app_container.host_port}/"
+        response = requests.get(url, timeout=HTTP_REQUEST_TIMEOUT)
+        assert response.status_code == 200
 
-        # Start the container in the background
-        start_result = subprocess.run(
-            [
-                "docker",
-                "run",
-                "-d",
-                "--name",
-                container_name,
-                "-p",
-                f"{host_port}:80",
-                docker_image,
-            ],
-            capture_output=True,
-            text=True,
-            timeout=DOCKER_COMMAND_TIMEOUT,
-        )
-
-        try:
-            assert start_result.returncode == 0, f"Failed to start: {start_result.stderr}"
-
-            # Wait for the application to respond to HTTP requests
-            app_ready = False
-            url = f"http://localhost:{host_port}/"
-            for _ in range(APP_STARTUP_TIMEOUT):
-                try:
-                    response = requests.get(url, timeout=HTTP_REQUEST_TIMEOUT)
-                    if response.status_code == 200:
-                        app_ready = True
-                        break
-                except requests.exceptions.RequestException:
-                    pass
-                time.sleep(POLLING_INTERVAL_SECONDS)
-
-            if not app_ready:
-                # Get logs for debugging
-                logs = subprocess.run(
-                    ["docker", "logs", container_name],
-                    capture_output=True,
-                    text=True,
-                    timeout=5,
-                )
-                pytest.fail(
-                    f"Application did not become ready within {APP_STARTUP_TIMEOUT}s. Logs: {logs.stdout}{logs.stderr}"
-                )
-
-        finally:
-            _cleanup_container(container_name)
-
-    def test_main_process_runs_as_appuser(self, docker_image: str) -> None:
+    def test_main_process_runs_as_appuser(self, running_app_container: RunningContainer) -> None:
         """The main process (PID 1) should run as appuser (uid 1000)."""
-        container_name = _generate_container_name("test-app-uid")
-        host_port = _find_free_port()
-
-        # Start the container in the background
-        start_result = subprocess.run(
+        # Verify the main process (PID 1) is running as appuser (uid 1000)
+        # Use /proc/1/status since ps is not available in slim images
+        exec_result = subprocess.run(
             [
                 "docker",
-                "run",
-                "-d",
-                "--name",
-                container_name,
-                "-p",
-                f"{host_port}:80",
-                docker_image,
+                "exec",
+                running_app_container.name,
+                "sh",
+                "-c",
+                "grep '^Uid:' /proc/1/status | awk '{print $2}'",
             ],
             capture_output=True,
             text=True,
-            timeout=DOCKER_COMMAND_TIMEOUT,
+            timeout=10,
         )
-
-        try:
-            assert start_result.returncode == 0, f"Failed to start: {start_result.stderr}"
-
-            # Wait for the application to start
-            url = f"http://localhost:{host_port}/"
-            for _ in range(APP_STARTUP_TIMEOUT):
-                try:
-                    response = requests.get(url, timeout=HTTP_REQUEST_TIMEOUT)
-                    if response.status_code == 200:
-                        break
-                except requests.exceptions.RequestException:
-                    pass
-                time.sleep(POLLING_INTERVAL_SECONDS)
-
-            # Verify the main process (PID 1) is running as appuser (uid 1000)
-            # Use /proc/1/status since ps is not available in slim images
-            exec_result = subprocess.run(
-                [
-                    "docker",
-                    "exec",
-                    container_name,
-                    "sh",
-                    "-c",
-                    "grep '^Uid:' /proc/1/status | awk '{print $2}'",
-                ],
-                capture_output=True,
-                text=True,
-                timeout=10,
-            )
-            process_uid = exec_result.stdout.strip()
-            assert process_uid == "1000", f"Expected PID 1 to run as uid 1000 (appuser), got {process_uid}"
-
-        finally:
-            _cleanup_container(container_name)
+        assert exec_result.returncode == 0, f"Failed to get UID: {exec_result.stderr}"
+        process_uid = exec_result.stdout.strip()
+        assert process_uid == "1000", f"Expected PID 1 to run as uid 1000 (appuser), got {process_uid}"
