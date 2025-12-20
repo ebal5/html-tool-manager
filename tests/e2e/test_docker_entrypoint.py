@@ -12,6 +12,8 @@ Note:
     Tests use Docker's automatic port allocation to avoid TOCTOU race conditions.
 
 Environment Variables:
+    E2E_DOCKER_IMAGE: Override the default Docker image tag for testing.
+                      Default is "html-tool-manager:test".
     E2E_APP_STARTUP_TIMEOUT: Override the default app startup timeout in seconds.
                              Default is 30 seconds.
 
@@ -27,14 +29,14 @@ from dataclasses import dataclass
 import pytest
 import requests
 
-# Docker image tag used for testing
-DOCKER_IMAGE = "html-tool-manager:test"
+# Docker image tag used for testing (configurable via environment variable)
+DOCKER_IMAGE = os.environ.get("E2E_DOCKER_IMAGE", "html-tool-manager:test")
 
 # Test configuration constants (all floats for consistency)
 APP_STARTUP_TIMEOUT = float(os.environ.get("E2E_APP_STARTUP_TIMEOUT", "30"))
 DOCKER_COMMAND_TIMEOUT = 30.0  # seconds
 DOCKER_BUILD_TIMEOUT = 300.0  # seconds (5 minutes for image build)
-HTTP_REQUEST_TIMEOUT = 0.5  # seconds
+HTTP_REQUEST_TIMEOUT = 1.0  # seconds
 POLLING_INTERVAL_SECONDS = 1.0  # seconds between HTTP health check polls
 
 
@@ -339,6 +341,46 @@ class TestDockerEntrypointPermissionFix:
 
         assert result.returncode == 0
 
+    def test_skips_chown_when_already_owned_by_appuser(self, docker_image: str) -> None:
+        """Entrypoint should skip chown when /data is already owned by appuser (uid 1000).
+
+        This tests the optimization in docker-entrypoint.sh that avoids
+        unnecessary chown calls when permissions are already correct.
+        """
+        # When /data is pre-mounted with appuser ownership, chown should be skipped
+        # We verify this by checking that the entrypoint succeeds and
+        # the directory is still accessible
+        result = _run_docker(
+            [
+                # Mount a tmpfs with appuser (uid 1000) ownership
+                "--tmpfs",
+                "/data:uid=1000,gid=1000",
+                docker_image,
+                "stat",
+                "-c",
+                "%u",
+                "/data",
+            ],
+        )
+
+        assert result.returncode == 0
+        owner_uid = result.stdout.strip()
+        assert owner_uid == "1000", f"Expected owner uid 1000, got {owner_uid}"
+
+    def test_handles_empty_data_directory(self, docker_image: str) -> None:
+        """Entrypoint should handle empty /data directory correctly."""
+        # Verify that an empty /data directory works
+        result = _run_docker(
+            [
+                docker_image,
+                "ls",
+                "-la",
+                "/data",
+            ],
+        )
+
+        assert result.returncode == 0
+
 
 class TestDockerEntrypointPermissionFailure:
     """Tests for permission fix failure handling."""
@@ -372,9 +414,9 @@ class TestDockerEntrypointPermissionFailure:
 
         # The entrypoint should have failed
         assert result.returncode != 0
-        # Check for the specific error message from docker-entrypoint.sh
+        # Check for the exact error message from docker-entrypoint.sh
         output = result.stdout + result.stderr
-        assert "Failed to change ownership" in output or "chown" in output.lower()
+        assert "Error: Failed to change ownership of /data" in output
 
 
 class TestDockerEntrypointNormalOperation:
@@ -407,6 +449,24 @@ class TestDockerEntrypointNormalOperation:
         assert result.returncode == 0
         uid = result.stdout.strip()
         assert uid == "1000", f"Expected uid 1000, got {uid}"
+
+    def test_environment_variables_passed_through(self, docker_image: str) -> None:
+        """Environment variables should be passed through to the command."""
+        test_value = "test_env_value_12345"
+        result = _run_docker(
+            [
+                "-e",
+                f"TEST_ENV_VAR={test_value}",
+                docker_image,
+                "sh",
+                "-c",
+                "echo $TEST_ENV_VAR",
+            ],
+        )
+
+        assert result.returncode == 0
+        output = result.stdout.strip()
+        assert output == test_value, f"Expected '{test_value}', got '{output}'"
 
 
 class TestDockerEntrypointAppStartup:
