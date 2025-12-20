@@ -18,26 +18,51 @@ document.addEventListener('DOMContentLoaded', () => {
   const viewGridBtn = document.getElementById('view-grid');
 
   let debounceTimer;
-  let currentView = localStorage.getItem('toolViewMode') || 'list';
+  let currentView = 'list';
+
+  // localStorage helper with error handling
+  function getStorageItem(key, defaultValue) {
+    try {
+      return localStorage.getItem(key) ?? defaultValue;
+    } catch {
+      console.warn('localStorage is not available');
+      return defaultValue;
+    }
+  }
+
+  function setStorageItem(key, value) {
+    try {
+      localStorage.setItem(key, value);
+    } catch {
+      console.warn('localStorage is not available');
+    }
+  }
+
+  // Initialize view from localStorage
+  currentView = getStorageItem('toolViewMode', 'list');
 
   // --- View mode functions ---
   function updateViewButtons() {
     document.querySelectorAll('.view-btn').forEach((btn) => {
       btn.classList.remove('active');
+      btn.setAttribute('aria-pressed', 'false');
     });
 
     if (currentView === 'list' && viewListBtn) {
       viewListBtn.classList.add('active');
+      viewListBtn.setAttribute('aria-pressed', 'true');
     } else if (currentView === 'card' && viewCardBtn) {
       viewCardBtn.classList.add('active');
+      viewCardBtn.setAttribute('aria-pressed', 'true');
     } else if (currentView === 'grid' && viewGridBtn) {
       viewGridBtn.classList.add('active');
+      viewGridBtn.setAttribute('aria-pressed', 'true');
     }
   }
 
   function setView(view) {
     currentView = view;
-    localStorage.setItem('toolViewMode', view);
+    setStorageItem('toolViewMode', view);
     updateViewButtons();
     fetchTools();
   }
@@ -167,23 +192,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
     container.appendChild(table);
 
-    const selectAllCheckbox = document.getElementById('select-all-tools');
-    if (selectAllCheckbox) {
-      selectAllCheckbox.addEventListener('change', (event) => {
-        document.querySelectorAll('.tool-checkbox').forEach((cb) => {
-          cb.checked = event.target.checked;
-        });
-      });
-    }
+    // Setup select-all event
+    setupSelectAllHandler();
   }
 
   // --- Card View Renderer ---
   function renderCardView(tools) {
-    const cardContainer = document.createElement('div');
-    cardContainer.className = 'tools-card-view';
-
     const isOperationsVisible =
       !toolOperationsContainer.classList.contains('hidden');
+
+    // Add select-all header
+    const selectAllHeader = document.createElement('div');
+    selectAllHeader.className = 'select-all-header';
+    if (!isOperationsVisible) {
+      selectAllHeader.classList.add('hidden');
+    }
+    const selectAllCheckbox = document.createElement('input');
+    selectAllCheckbox.type = 'checkbox';
+    selectAllCheckbox.id = 'select-all-tools';
+    const selectAllLabel = document.createElement('label');
+    selectAllLabel.htmlFor = 'select-all-tools';
+    selectAllLabel.textContent = 'すべて選択';
+    selectAllHeader.appendChild(selectAllCheckbox);
+    selectAllHeader.appendChild(selectAllLabel);
+    container.appendChild(selectAllHeader);
+
+    const cardContainer = document.createElement('div');
+    cardContainer.className = 'tools-card-view';
 
     tools.forEach((tool) => {
       const card = document.createElement('div');
@@ -243,15 +278,34 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     container.appendChild(cardContainer);
+
+    // Setup select-all event
+    setupSelectAllHandler();
   }
 
   // --- Grid View Renderer ---
   function renderGridView(tools) {
-    const gridContainer = document.createElement('div');
-    gridContainer.className = 'tools-grid-view';
-
     const isOperationsVisible =
       !toolOperationsContainer.classList.contains('hidden');
+
+    // Add select-all header
+    const selectAllHeader = document.createElement('div');
+    selectAllHeader.className = 'select-all-header';
+    if (!isOperationsVisible) {
+      selectAllHeader.classList.add('hidden');
+    }
+    const selectAllCheckbox = document.createElement('input');
+    selectAllCheckbox.type = 'checkbox';
+    selectAllCheckbox.id = 'select-all-tools';
+    const selectAllLabel = document.createElement('label');
+    selectAllLabel.htmlFor = 'select-all-tools';
+    selectAllLabel.textContent = 'すべて選択';
+    selectAllHeader.appendChild(selectAllCheckbox);
+    selectAllHeader.appendChild(selectAllLabel);
+    container.appendChild(selectAllHeader);
+
+    const gridContainer = document.createElement('div');
+    gridContainer.className = 'tools-grid-view';
 
     tools.forEach((tool) => {
       const gridItem = document.createElement('div');
@@ -278,17 +332,6 @@ document.addEventListener('DOMContentLoaded', () => {
       thumbnail.className = 'tool-grid-thumbnail';
       thumbnail.textContent = '🛠️';
 
-      // Make grid item clickable to view tool
-      gridItem.addEventListener('click', (e) => {
-        if (
-          !e.target.classList.contains('tool-checkbox') &&
-          !e.target.closest('button') &&
-          !e.target.closest('a')
-        ) {
-          window.location.href = `/tools/view/${tool.id}`;
-        }
-      });
-
       const metaDiv = document.createElement('div');
       metaDiv.className = 'tool-grid-meta';
 
@@ -313,6 +356,42 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     container.appendChild(gridContainer);
+
+    // Setup select-all and grid click events (event delegation)
+    setupSelectAllHandler();
+    gridContainer.addEventListener('click', handleGridItemClick);
+  }
+
+  // --- Grid item click handler (event delegation) ---
+  function handleGridItemClick(e) {
+    const gridItem = e.target.closest('.tool-grid-item');
+    if (!gridItem) return;
+
+    // Don't navigate if clicking checkbox or interactive elements
+    if (
+      e.target.classList.contains('tool-checkbox') ||
+      e.target.closest('button') ||
+      e.target.closest('a')
+    ) {
+      return;
+    }
+
+    const toolId = gridItem.dataset.toolId;
+    if (toolId) {
+      window.location.href = `/tools/view/${toolId}`;
+    }
+  }
+
+  // --- Setup select-all checkbox handler ---
+  function setupSelectAllHandler() {
+    const selectAllCheckbox = document.getElementById('select-all-tools');
+    if (selectAllCheckbox) {
+      selectAllCheckbox.addEventListener('change', (event) => {
+        document.querySelectorAll('.tool-checkbox').forEach((cb) => {
+          cb.checked = event.target.checked;
+        });
+      });
+    }
   }
 
   // --- Helper functions ---
@@ -407,7 +486,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (toggleToolOperationsBtn) {
     toggleToolOperationsBtn.addEventListener('click', () => {
       toolOperationsContainer.classList.toggle('hidden');
-      // Update checkboxes for all view modes
+      // Update checkboxes and select-all header for all view modes
       document.querySelectorAll('.checkbox-column').forEach((el) => {
         el.classList.toggle('hidden');
       });
@@ -416,6 +495,9 @@ document.addEventListener('DOMContentLoaded', () => {
         .forEach((el) => {
           el.classList.toggle('hidden');
         });
+      document.querySelectorAll('.select-all-header').forEach((el) => {
+        el.classList.toggle('hidden');
+      });
     });
   }
 
@@ -457,7 +539,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const selectedToolIds = Array.from(
         document.querySelectorAll('.tool-checkbox:checked'),
       )
-        .map((checkbox) => checkbox.closest('tr').dataset.toolId)
+        .map((checkbox) => checkbox.closest('[data-tool-id]')?.dataset.toolId)
         .filter((id) => id); // 無効なIDを除外
 
       if (selectedToolIds.length === 0) {
