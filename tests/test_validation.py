@@ -80,6 +80,24 @@ class TestDescriptionValidation:
         assert response.status_code == 201
 
 
+class TestQueryValidation:
+    """検索クエリのバリデーションテスト。"""
+
+    def test_query_too_long_returns_422(self, session: Session, client: TestClient):
+        """長すぎる検索クエリで422が返ることをテストする。"""
+        # max_length=500を超えるクエリ
+        long_query = "a" * 501
+        response = client.get(f"/api/tools/?q={long_query}")
+        assert response.status_code == 422
+
+    def test_query_at_max_length_accepted(self, session: Session, client: TestClient):
+        """最大長の検索クエリが受け入れられることをテストする。"""
+        # max_length=500のクエリ
+        max_query = "a" * 500
+        response = client.get(f"/api/tools/?q={max_query}")
+        assert response.status_code == 200
+
+
 class TestTagsValidation:
     """タグフィールドのバリデーションテスト。"""
 
