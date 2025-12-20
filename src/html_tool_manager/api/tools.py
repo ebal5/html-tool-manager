@@ -82,7 +82,7 @@ def create_tool(tool_data: ToolCreate, session: Session = Depends(get_session)) 
 @router.get("/", response_model=List[ToolRead])
 def read_tools(
     session: Session = Depends(get_session),
-    q: Optional[str] = Query(None, description="検索クエリ（例: 'name:', 'desc:', 'tag:'）"),
+    q: Optional[str] = Query(None, max_length=500, description="検索クエリ（例: 'name:', 'desc:', 'tag:'）"),
     sort: SortOrder = Query(SortOrder.RELEVANCE, description="ソート順"),
     offset: int = Query(default=0, ge=0, description="オフセット（0以上）"),
     limit: int = Query(default=100, ge=1, le=1000, description="取得件数（1-1000）"),
