@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - "v*.*.*"
+  pull_request:
+    paths:
+      - "Dockerfile"
+      - "docker-entrypoint.sh"
+      - "tests/e2e/**"
+      - ".github/workflows/e2e-test.yml"
   workflow_dispatch:
 
 jobs:
@@ -26,6 +32,9 @@ jobs:
 
       - name: Install Playwright browsers
         run: uv run playwright install --with-deps chromium
+
+      - name: Build Docker image for E2E tests
+        run: docker build -t html-tool-manager:test .
 
       - name: Run E2E tests
         run: uv run pytest -v -m e2e
