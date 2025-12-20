@@ -12,7 +12,49 @@ document.addEventListener('DOMContentLoaded', () => {
     'tool-operations-container',
   );
 
+  // View switcher elements
+  const viewListBtn = document.getElementById('view-list');
+  const viewCardBtn = document.getElementById('view-card');
+  const viewGridBtn = document.getElementById('view-grid');
+
   let debounceTimer;
+  let currentView = localStorage.getItem('toolViewMode') || 'list';
+
+  // --- View mode functions ---
+  function updateViewButtons() {
+    document.querySelectorAll('.view-btn').forEach((btn) => {
+      btn.classList.remove('active');
+    });
+
+    if (currentView === 'list' && viewListBtn) {
+      viewListBtn.classList.add('active');
+    } else if (currentView === 'card' && viewCardBtn) {
+      viewCardBtn.classList.add('active');
+    } else if (currentView === 'grid' && viewGridBtn) {
+      viewGridBtn.classList.add('active');
+    }
+  }
+
+  function setView(view) {
+    currentView = view;
+    localStorage.setItem('toolViewMode', view);
+    updateViewButtons();
+    fetchTools();
+  }
+
+  // Initialize view buttons
+  if (viewListBtn) {
+    viewListBtn.addEventListener('click', () => setView('list'));
+  }
+  if (viewCardBtn) {
+    viewCardBtn.addEventListener('click', () => setView('card'));
+  }
+  if (viewGridBtn) {
+    viewGridBtn.addEventListener('click', () => setView('grid'));
+  }
+
+  // Set initial view state
+  updateViewButtons();
 
   // --- ツール一覧の取得と表示 ---
   async function fetchTools() {
@@ -36,8 +78,28 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      const table = document.createElement('table');
-      table.innerHTML = `
+      container.innerHTML = '';
+
+      if (currentView === 'list') {
+        renderListView(tools);
+      } else if (currentView === 'card') {
+        renderCardView(tools);
+      } else if (currentView === 'grid') {
+        renderGridView(tools);
+      }
+
+      // 削除ボタンのイベント委譲（インラインハンドラを避けてCSP準拠）
+      container.addEventListener('click', handleDeleteClick);
+    } catch (error) {
+      container.innerHTML = `<p style="color: var(--pico-color-red-500);">ツールの読み込みに失敗しました。</p>`;
+      console.error('Error fetching tools:', error);
+    }
+  }
+
+  // --- List View Renderer ---
+  function renderListView(tools) {
+    const table = document.createElement('table');
+    table.innerHTML = `
                 <thead>
                     <tr>
                         <th class="checkbox-column hidden"><input type="checkbox" id="select-all-tools"></th>
@@ -50,135 +112,272 @@ document.addEventListener('DOMContentLoaded', () => {
                 </thead>
                 <tbody></tbody>
             `;
-      const tbody = table.querySelector('tbody');
+    const tbody = table.querySelector('tbody');
 
-      const isOperationsVisible =
-        !toolOperationsContainer.classList.contains('hidden');
+    const isOperationsVisible =
+      !toolOperationsContainer.classList.contains('hidden');
 
-      tools.forEach((tool) => {
-        const tr = document.createElement('tr');
-        tr.dataset.toolId = tool.id; // エクスポート用にIDを保持
+    tools.forEach((tool) => {
+      const tr = document.createElement('tr');
+      tr.dataset.toolId = tool.id;
 
-        const checkboxCell = document.createElement('td');
-        checkboxCell.classList.add('checkbox-column');
-        if (!isOperationsVisible) {
-          // 初期状態では非表示
-          checkboxCell.classList.add('hidden');
-        }
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.className = 'tool-checkbox';
-        checkboxCell.appendChild(checkbox);
+      const checkboxCell = document.createElement('td');
+      checkboxCell.classList.add('checkbox-column');
+      if (!isOperationsVisible) {
+        checkboxCell.classList.add('hidden');
+      }
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.className = 'tool-checkbox';
+      checkboxCell.appendChild(checkbox);
 
-        const nameCell = document.createElement('td');
-        nameCell.textContent = tool.name;
+      const nameCell = document.createElement('td');
+      nameCell.textContent = tool.name;
 
-        const descCell = document.createElement('td');
-        descCell.textContent = tool.description || '';
+      const descCell = document.createElement('td');
+      descCell.textContent = tool.description || '';
 
-        const tagsCell = document.createElement('td');
-        if (tool.tags && tool.tags.length > 0) {
-          tool.tags.forEach((tag, index) => {
-            const code = document.createElement('code');
-            code.textContent = tag;
-            tagsCell.appendChild(code);
-            if (index < tool.tags.length - 1) {
-              tagsCell.appendChild(document.createTextNode(' ')); // for spacing
-            }
-          });
-        }
-
-        const typeCell = document.createElement('td');
-        const typeBadge = document.createElement('code');
-        const toolType = tool.tool_type || 'html'; // デフォルトは html
-        if (toolType === 'react') {
-          typeBadge.textContent = 'React';
-          typeBadge.style.backgroundColor = '#61DAFB';
-          typeBadge.style.color = '#000';
-        } else {
-          typeBadge.textContent = 'HTML';
-          typeBadge.style.backgroundColor = '#E34C26';
-          typeBadge.style.color = '#fff';
-        }
-        typeBadge.style.padding = '0.25rem 0.5rem';
-        typeBadge.style.borderRadius = '0.25rem';
-        typeBadge.style.fontSize = '0.875rem';
-        typeCell.appendChild(typeBadge);
-
-        const actionsCell = document.createElement('td');
-        // XSS対策: DOM APIで安全に要素を構築
-        const actionDiv = document.createElement('div');
-        actionDiv.className = 'action-grid';
-
-        const viewLink = document.createElement('a');
-        viewLink.href = `/tools/view/${tool.id}`;
-        viewLink.setAttribute('role', 'button');
-        viewLink.className = 'secondary outline';
-        viewLink.textContent = '使用';
-
-        const dropdown = document.createElement('details');
-        dropdown.className = 'dropdown';
-
-        const summary = document.createElement('summary');
-        summary.setAttribute('role', 'button');
-        summary.className = 'contrast outline';
-        summary.textContent = '⋮';
-
-        const ul = document.createElement('ul');
-        ul.style.position = 'absolute';
-        ul.style.zIndex = '1';
-
-        const editLi = document.createElement('li');
-        const editLink = document.createElement('a');
-        editLink.href = `/tools/edit/${tool.id}`;
-        editLink.textContent = '編集';
-        editLi.appendChild(editLink);
-
-        const deleteLi = document.createElement('li');
-        const deleteLink = document.createElement('a');
-        deleteLink.href = '#';
-        deleteLink.className = 'delete-tool-btn';
-        deleteLink.dataset.toolId = tool.id;
-        deleteLink.textContent = '削除';
-        deleteLi.appendChild(deleteLink);
-
-        ul.appendChild(editLi);
-        ul.appendChild(deleteLi);
-        dropdown.appendChild(summary);
-        dropdown.appendChild(ul);
-        actionDiv.appendChild(viewLink);
-        actionDiv.appendChild(dropdown);
-        actionsCell.appendChild(actionDiv);
-
-        tr.appendChild(checkboxCell);
-        tr.appendChild(nameCell);
-        tr.appendChild(descCell);
-        tr.appendChild(tagsCell);
-        tr.appendChild(typeCell);
-        tr.appendChild(actionsCell);
-
-        tbody.appendChild(tr);
-      });
-
-      container.innerHTML = '';
-      container.appendChild(table);
-
-      // 「すべて選択」チェックボックスのイベントリスナー設定
-      const selectAllCheckbox = document.getElementById('select-all-tools');
-      if (selectAllCheckbox) {
-        selectAllCheckbox.addEventListener('change', (event) => {
-          document.querySelectorAll('.tool-checkbox').forEach((cb) => {
-            cb.checked = event.target.checked;
-          });
+      const tagsCell = document.createElement('td');
+      if (tool.tags && tool.tags.length > 0) {
+        tool.tags.forEach((tag, index) => {
+          const code = document.createElement('code');
+          code.textContent = tag;
+          tagsCell.appendChild(code);
+          if (index < tool.tags.length - 1) {
+            tagsCell.appendChild(document.createTextNode(' '));
+          }
         });
       }
 
-      // 削除ボタンのイベント委譲（インラインハンドラを避けてCSP準拠）
-      container.addEventListener('click', handleDeleteClick);
-    } catch (error) {
-      container.innerHTML = `<p style="color: var(--pico-color-red-500);">ツールの読み込みに失敗しました。</p>`;
-      console.error('Error fetching tools:', error);
+      const typeCell = document.createElement('td');
+      typeCell.appendChild(createTypeBadge(tool.tool_type));
+
+      const actionsCell = document.createElement('td');
+      actionsCell.appendChild(createActions(tool));
+
+      tr.appendChild(checkboxCell);
+      tr.appendChild(nameCell);
+      tr.appendChild(descCell);
+      tr.appendChild(tagsCell);
+      tr.appendChild(typeCell);
+      tr.appendChild(actionsCell);
+
+      tbody.appendChild(tr);
+    });
+
+    container.appendChild(table);
+
+    const selectAllCheckbox = document.getElementById('select-all-tools');
+    if (selectAllCheckbox) {
+      selectAllCheckbox.addEventListener('change', (event) => {
+        document.querySelectorAll('.tool-checkbox').forEach((cb) => {
+          cb.checked = event.target.checked;
+        });
+      });
     }
+  }
+
+  // --- Card View Renderer ---
+  function renderCardView(tools) {
+    const cardContainer = document.createElement('div');
+    cardContainer.className = 'tools-card-view';
+
+    const isOperationsVisible =
+      !toolOperationsContainer.classList.contains('hidden');
+
+    tools.forEach((tool) => {
+      const card = document.createElement('div');
+      card.className = 'tool-card';
+      card.dataset.toolId = tool.id;
+
+      const header = document.createElement('div');
+      header.className = 'tool-card-header';
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.className = 'tool-checkbox tool-card-checkbox';
+      if (!isOperationsVisible) {
+        checkbox.classList.add('hidden');
+      }
+      header.appendChild(checkbox);
+
+      const title = document.createElement('h3');
+      title.className = 'tool-card-title';
+      title.textContent = tool.name;
+      header.appendChild(title);
+
+      const thumbnail = document.createElement('div');
+      thumbnail.className = 'tool-card-thumbnail';
+      thumbnail.textContent = '🛠️';
+
+      const description = document.createElement('p');
+      description.className = 'tool-card-description';
+      description.textContent = tool.description || 'No description';
+
+      const tagsDiv = document.createElement('div');
+      tagsDiv.className = 'tool-card-tags';
+      if (tool.tags && tool.tags.length > 0) {
+        tool.tags.forEach((tag) => {
+          const code = document.createElement('code');
+          code.textContent = tag;
+          tagsDiv.appendChild(code);
+        });
+      }
+
+      const typeDiv = document.createElement('div');
+      typeDiv.className = 'tool-card-type';
+      typeDiv.appendChild(createTypeBadge(tool.tool_type));
+
+      const actions = document.createElement('div');
+      actions.className = 'tool-card-actions';
+      actions.appendChild(createActions(tool));
+
+      card.appendChild(header);
+      card.appendChild(thumbnail);
+      card.appendChild(description);
+      card.appendChild(tagsDiv);
+      card.appendChild(typeDiv);
+      card.appendChild(actions);
+
+      cardContainer.appendChild(card);
+    });
+
+    container.appendChild(cardContainer);
+  }
+
+  // --- Grid View Renderer ---
+  function renderGridView(tools) {
+    const gridContainer = document.createElement('div');
+    gridContainer.className = 'tools-grid-view';
+
+    const isOperationsVisible =
+      !toolOperationsContainer.classList.contains('hidden');
+
+    tools.forEach((tool) => {
+      const gridItem = document.createElement('div');
+      gridItem.className = 'tool-grid-item';
+      gridItem.dataset.toolId = tool.id;
+
+      const header = document.createElement('div');
+      header.className = 'tool-grid-header';
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.className = 'tool-checkbox tool-grid-checkbox';
+      if (!isOperationsVisible) {
+        checkbox.classList.add('hidden');
+      }
+      header.appendChild(checkbox);
+
+      const title = document.createElement('h4');
+      title.className = 'tool-grid-title';
+      title.textContent = tool.name;
+      header.appendChild(title);
+
+      const thumbnail = document.createElement('div');
+      thumbnail.className = 'tool-grid-thumbnail';
+      thumbnail.textContent = '🛠️';
+
+      // Make grid item clickable to view tool
+      gridItem.addEventListener('click', (e) => {
+        if (
+          !e.target.classList.contains('tool-checkbox') &&
+          !e.target.closest('button') &&
+          !e.target.closest('a')
+        ) {
+          window.location.href = `/tools/view/${tool.id}`;
+        }
+      });
+
+      const metaDiv = document.createElement('div');
+      metaDiv.className = 'tool-grid-meta';
+
+      const tagsDiv = document.createElement('div');
+      tagsDiv.className = 'tool-grid-tags';
+      if (tool.tags && tool.tags.length > 0) {
+        tool.tags.forEach((tag) => {
+          const code = document.createElement('code');
+          code.textContent = tag;
+          tagsDiv.appendChild(code);
+        });
+      }
+
+      metaDiv.appendChild(createTypeBadge(tool.tool_type));
+      metaDiv.appendChild(tagsDiv);
+
+      gridItem.appendChild(header);
+      gridItem.appendChild(thumbnail);
+      gridItem.appendChild(metaDiv);
+
+      gridContainer.appendChild(gridItem);
+    });
+
+    container.appendChild(gridContainer);
+  }
+
+  // --- Helper functions ---
+  function createTypeBadge(toolType) {
+    const typeBadge = document.createElement('code');
+    const type = toolType || 'html';
+    if (type === 'react') {
+      typeBadge.textContent = 'React';
+      typeBadge.style.backgroundColor = '#61DAFB';
+      typeBadge.style.color = '#000';
+    } else {
+      typeBadge.textContent = 'HTML';
+      typeBadge.style.backgroundColor = '#E34C26';
+      typeBadge.style.color = '#fff';
+    }
+    typeBadge.style.padding = '0.25rem 0.5rem';
+    typeBadge.style.borderRadius = '0.25rem';
+    typeBadge.style.fontSize = '0.875rem';
+    return typeBadge;
+  }
+
+  function createActions(tool) {
+    const actionDiv = document.createElement('div');
+    actionDiv.className = 'action-grid';
+
+    const viewLink = document.createElement('a');
+    viewLink.href = `/tools/view/${tool.id}`;
+    viewLink.setAttribute('role', 'button');
+    viewLink.className = 'secondary outline';
+    viewLink.textContent = '使用';
+
+    const dropdown = document.createElement('details');
+    dropdown.className = 'dropdown';
+
+    const summary = document.createElement('summary');
+    summary.setAttribute('role', 'button');
+    summary.className = 'contrast outline';
+    summary.textContent = '⋮';
+
+    const ul = document.createElement('ul');
+    ul.style.position = 'absolute';
+    ul.style.zIndex = '1';
+
+    const editLi = document.createElement('li');
+    const editLink = document.createElement('a');
+    editLink.href = `/tools/edit/${tool.id}`;
+    editLink.textContent = '編集';
+    editLi.appendChild(editLink);
+
+    const deleteLi = document.createElement('li');
+    const deleteLink = document.createElement('a');
+    deleteLink.href = '#';
+    deleteLink.className = 'delete-tool-btn';
+    deleteLink.dataset.toolId = tool.id;
+    deleteLink.textContent = '削除';
+    deleteLi.appendChild(deleteLink);
+
+    ul.appendChild(editLi);
+    ul.appendChild(deleteLi);
+    dropdown.appendChild(summary);
+    dropdown.appendChild(ul);
+    actionDiv.appendChild(viewLink);
+    actionDiv.appendChild(dropdown);
+
+    return actionDiv;
   }
 
   // 検索ボックスがあるページでのみイベントリスナーを登録
@@ -208,9 +407,15 @@ document.addEventListener('DOMContentLoaded', () => {
   if (toggleToolOperationsBtn) {
     toggleToolOperationsBtn.addEventListener('click', () => {
       toolOperationsContainer.classList.toggle('hidden');
+      // Update checkboxes for all view modes
       document.querySelectorAll('.checkbox-column').forEach((el) => {
         el.classList.toggle('hidden');
       });
+      document
+        .querySelectorAll('.tool-card-checkbox, .tool-grid-checkbox')
+        .forEach((el) => {
+          el.classList.toggle('hidden');
+        });
     });
   }
 
