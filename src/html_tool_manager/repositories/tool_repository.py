@@ -199,7 +199,7 @@ class ToolRepository:
         results = self.session.exec(statement).all()
         return list(results)
 
-    def update_tool(self, tool_id: int, tool_update: Tool, expected_version: int) -> Optional[Tool]:
+    def update_tool(self, tool_id: int, tool_update: Tool, *, expected_version: int) -> Optional[Tool]:
         """Update existing tool information with optimistic locking.
 
         Args:

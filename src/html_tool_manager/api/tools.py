@@ -127,7 +127,9 @@ def update_tool(tool_id: int, tool_data: ToolUpdate, session: Session = Depends(
     if not tool_to_update:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tool not found")
 
-    # 楽観的ロックチェック（ファイル処理の前に実行）
+    # 楽観的ロック事前チェック（ファイルI/Oの前に実行してUXを向上）
+    # 注意: これは早期失敗のための事前チェックです。
+    # 最終的なバージョンチェックはリポジトリ層で最新データに対して行われます。
     if tool_to_update.version != tool_data.version:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -154,6 +156,9 @@ def update_tool(tool_id: int, tool_data: ToolUpdate, session: Session = Depends(
         filepath = validate_tool_filepath(tool_to_update.filepath)
 
         # 現在の内容を読み取り、変更がある場合のみスナップショット作成
+        # 注意: 事前チェック後でも稀に競合が発生する可能性があります。
+        # その場合、不要なスナップショットが作成されますが、
+        # 20件上限の自動クリーンアップにより影響は軽微です。
         try:
             with open(filepath, encoding="utf-8") as f:
                 current_content = f.read()

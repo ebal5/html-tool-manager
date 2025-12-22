@@ -267,12 +267,21 @@
                         errorData.detail?.message || 'このツールは他のユーザーによって更新されています。'
                     ));
                     messageDiv.appendChild(document.createElement('br'));
+                    const warningSmall = document.createElement('small');
+                    warningSmall.textContent = '※ 再読み込みすると、現在の編集内容は失われます。';
+                    warningSmall.style.display = 'block';
+                    warningSmall.style.marginTop = '0.25rem';
+                    messageDiv.appendChild(warningSmall);
                     const reloadBtn = document.createElement('button');
                     reloadBtn.type = 'button';
                     reloadBtn.className = 'secondary outline';
                     reloadBtn.style.marginTop = '0.5rem';
                     reloadBtn.textContent = '最新データを読み込む';
-                    reloadBtn.addEventListener('click', () => location.reload());
+                    reloadBtn.addEventListener('click', () => {
+                        if (confirm('現在の編集内容は失われます。よろしいですか？')) {
+                            location.reload();
+                        }
+                    });
                     messageDiv.appendChild(reloadBtn);
                 } else {
                     const errorData = await response.json();
