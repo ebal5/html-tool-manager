@@ -251,7 +251,8 @@ class ToolRepository:
         # DML文の実行結果はCursorResultでrowcountを持つ
         if result.rowcount == 0:  # type: ignore[attr-defined]
             # 存在確認済みなので、0行 = バージョン不一致
-            # 現在のバージョンを取得して例外に含める
+            # toolオブジェクトはUPDATE前に取得したものなので、
+            # refreshでDBから最新のバージョンを再取得する
             self.session.refresh(tool)
             raise OptimisticLockError(tool.version, expected_version)
 
