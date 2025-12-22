@@ -131,9 +131,6 @@ document.addEventListener('DOMContentLoaded', () => {
           console.error('Fallback render also failed:', fallbackError);
         }
       }
-
-      // 削除ボタンのイベント委譲（インラインハンドラを避けてCSP準拠）
-      container.addEventListener('click', handleDeleteClick);
     } catch (error) {
       container.innerHTML =
         '<p class="error-message">ツールの読み込みに失敗しました。</p>';
@@ -519,6 +516,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initial load（コンテナがあるページでのみ）
   if (container) {
+    // 削除ボタンのイベント委譲（一度だけ登録、インラインハンドラを避けてCSP準拠）
+    container.addEventListener('click', handleDeleteClick);
     fetchTools();
   }
 
