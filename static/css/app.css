@@ -242,14 +242,14 @@ kbd {
 /* Card View */
 .tools-card-view {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(var(--card-min-width), 1fr));
-  gap: var(--card-gap);
+  grid-template-columns: repeat(auto-fill, minmax(var(--card-min-width, 300px), 1fr));
+  gap: var(--card-gap, 1.5rem);
 }
 
 .tool-card {
   border: 1px solid var(--pico-muted-border-color);
   border-radius: var(--pico-border-radius);
-  padding: var(--card-padding);
+  padding: var(--card-padding, 1.5rem);
   background-color: var(--pico-card-background-color);
   transition: box-shadow 0.2s ease;
 }
@@ -282,7 +282,7 @@ kbd {
 
 .tool-card-thumbnail {
   width: 100%;
-  height: var(--card-thumbnail-height);
+  height: var(--card-thumbnail-height, 150px);
   background: linear-gradient(135deg, var(--pico-primary-focus) 0%, var(--pico-secondary-focus) 100%);
   border-radius: var(--pico-border-radius);
   margin-bottom: 1rem;
@@ -329,14 +329,14 @@ kbd {
 /* Grid View */
 .tools-grid-view {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(var(--grid-min-width), 1fr));
-  gap: var(--grid-gap);
+  grid-template-columns: repeat(auto-fill, minmax(var(--grid-min-width, 250px), 1fr));
+  gap: var(--grid-gap, 1rem);
 }
 
 .tool-grid-item {
   border: 1px solid var(--pico-muted-border-color);
   border-radius: var(--pico-border-radius);
-  padding: var(--grid-padding);
+  padding: var(--grid-padding, 1rem);
   background-color: var(--pico-card-background-color);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   cursor: pointer;
@@ -373,7 +373,7 @@ kbd {
 
 .tool-grid-thumbnail {
   width: 100%;
-  height: var(--grid-thumbnail-height);
+  height: var(--grid-thumbnail-height, 120px);
   background: linear-gradient(135deg, var(--pico-primary-focus) 0%, var(--pico-secondary-focus) 100%);
   border-radius: var(--pico-border-radius);
   margin-bottom: 0.75rem;

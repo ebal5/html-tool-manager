@@ -16,6 +16,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const viewListBtn = document.getElementById('view-list');
   const viewCardBtn = document.getElementById('view-card');
   const viewGridBtn = document.getElementById('view-grid');
+  // Cache view buttons array for performance (avoid querySelectorAll on each update)
+  const viewButtons = [viewListBtn, viewCardBtn, viewGridBtn].filter(Boolean);
+  const viewButtonMap = {
+    list: viewListBtn,
+    card: viewCardBtn,
+    grid: viewGridBtn,
+  };
 
   let debounceTimer;
   let currentView = 'list';
@@ -43,20 +50,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- View mode functions ---
   function updateViewButtons() {
-    document.querySelectorAll('.view-btn').forEach((btn) => {
+    // Use cached button references instead of querySelectorAll
+    for (const btn of viewButtons) {
       btn.classList.remove('active');
       btn.setAttribute('aria-pressed', 'false');
-    });
+    }
 
-    if (currentView === 'list' && viewListBtn) {
-      viewListBtn.classList.add('active');
-      viewListBtn.setAttribute('aria-pressed', 'true');
-    } else if (currentView === 'card' && viewCardBtn) {
-      viewCardBtn.classList.add('active');
-      viewCardBtn.setAttribute('aria-pressed', 'true');
-    } else if (currentView === 'grid' && viewGridBtn) {
-      viewGridBtn.classList.add('active');
-      viewGridBtn.setAttribute('aria-pressed', 'true');
+    const activeBtn = viewButtonMap[currentView];
+    if (activeBtn) {
+      activeBtn.classList.add('active');
+      activeBtn.setAttribute('aria-pressed', 'true');
     }
   }
 
@@ -311,6 +314,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const gridItem = document.createElement('div');
       gridItem.className = 'tool-grid-item';
       gridItem.dataset.toolId = tool.id;
+      gridItem.setAttribute('tabindex', '0');
+      gridItem.setAttribute('role', 'button');
+      gridItem.setAttribute('aria-label', `${tool.name}を表示`);
 
       const header = document.createElement('div');
       header.className = 'tool-grid-header';
@@ -357,9 +363,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     container.appendChild(gridContainer);
 
-    // Setup select-all and grid click events (event delegation)
+    // Setup select-all and grid click/keyboard events (event delegation)
     setupSelectAllHandler();
     gridContainer.addEventListener('click', handleGridItemClick);
+    gridContainer.addEventListener('keydown', handleGridItemKeydown);
   }
 
   // --- Grid item click handler (event delegation) ---
@@ -376,6 +383,27 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    navigateToTool(gridItem);
+  }
+
+  // --- Grid item keyboard handler (event delegation) ---
+  function handleGridItemKeydown(e) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+
+    const gridItem = e.target.closest('.tool-grid-item');
+    if (!gridItem) return;
+
+    // Don't navigate if focus is on checkbox
+    if (e.target.classList.contains('tool-checkbox')) {
+      return;
+    }
+
+    e.preventDefault();
+    navigateToTool(gridItem);
+  }
+
+  // --- Navigate to tool view ---
+  function navigateToTool(gridItem) {
     const toolId = gridItem.dataset.toolId;
     if (toolId) {
       window.location.href = `/tools/view/${toolId}`;
