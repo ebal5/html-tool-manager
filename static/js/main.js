@@ -108,18 +108,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
       container.innerHTML = '';
 
-      if (currentView === 'list') {
-        renderListView(tools);
-      } else if (currentView === 'card') {
-        renderCardView(tools);
-      } else if (currentView === 'grid') {
-        renderGridView(tools);
+      // ビュー描画（エラー時はリストビューにフォールバック）
+      try {
+        if (currentView === 'list') {
+          renderListView(tools);
+        } else if (currentView === 'card') {
+          renderCardView(tools);
+        } else if (currentView === 'grid') {
+          renderGridView(tools);
+        }
+      } catch (renderError) {
+        console.error('Error rendering view:', renderError);
+        container.innerHTML =
+          '<p class="error-message">表示エラーが発生しました。リストビューに切り替えます。</p>';
+        // フォールバック：リストビューに戻す
+        currentView = 'list';
+        setStorageItem('toolViewMode', 'list');
+        updateViewButtons();
+        try {
+          renderListView(tools);
+        } catch (fallbackError) {
+          console.error('Fallback render also failed:', fallbackError);
+        }
       }
 
       // 削除ボタンのイベント委譲（インラインハンドラを避けてCSP準拠）
       container.addEventListener('click', handleDeleteClick);
     } catch (error) {
-      container.innerHTML = `<p style="color: var(--pico-color-red-500);">ツールの読み込みに失敗しました。</p>`;
+      container.innerHTML =
+        '<p class="error-message">ツールの読み込みに失敗しました。</p>';
       console.error('Error fetching tools:', error);
     }
   }
@@ -199,12 +216,8 @@ document.addEventListener('DOMContentLoaded', () => {
     setupSelectAllHandler();
   }
 
-  // --- Card View Renderer ---
-  function renderCardView(tools) {
-    const isOperationsVisible =
-      !toolOperationsContainer.classList.contains('hidden');
-
-    // Add select-all header
+  // --- Create select-all header (shared by card/grid views) ---
+  function createSelectAllHeader(isOperationsVisible) {
     const selectAllHeader = document.createElement('div');
     selectAllHeader.className = 'select-all-header';
     if (!isOperationsVisible) {
@@ -218,7 +231,15 @@ document.addEventListener('DOMContentLoaded', () => {
     selectAllLabel.textContent = 'すべて選択';
     selectAllHeader.appendChild(selectAllCheckbox);
     selectAllHeader.appendChild(selectAllLabel);
-    container.appendChild(selectAllHeader);
+    return selectAllHeader;
+  }
+
+  // --- Card View Renderer ---
+  function renderCardView(tools) {
+    const isOperationsVisible =
+      !toolOperationsContainer.classList.contains('hidden');
+
+    container.appendChild(createSelectAllHeader(isOperationsVisible));
 
     const cardContainer = document.createElement('div');
     cardContainer.className = 'tools-card-view';
@@ -291,21 +312,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const isOperationsVisible =
       !toolOperationsContainer.classList.contains('hidden');
 
-    // Add select-all header
-    const selectAllHeader = document.createElement('div');
-    selectAllHeader.className = 'select-all-header';
-    if (!isOperationsVisible) {
-      selectAllHeader.classList.add('hidden');
-    }
-    const selectAllCheckbox = document.createElement('input');
-    selectAllCheckbox.type = 'checkbox';
-    selectAllCheckbox.id = 'select-all-tools';
-    const selectAllLabel = document.createElement('label');
-    selectAllLabel.htmlFor = 'select-all-tools';
-    selectAllLabel.textContent = 'すべて選択';
-    selectAllHeader.appendChild(selectAllCheckbox);
-    selectAllHeader.appendChild(selectAllLabel);
-    container.appendChild(selectAllHeader);
+    container.appendChild(createSelectAllHeader(isOperationsVisible));
 
     const gridContainer = document.createElement('div');
     gridContainer.className = 'tools-grid-view';
