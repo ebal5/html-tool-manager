@@ -234,7 +234,10 @@ class ToolRepository:
         # WHERE句にversionを含めることで、バージョンチェックと更新を単一クエリで実行
         stmt = (
             update(Tool)
-            .where(Tool.id == tool_id, Tool.version == expected_version)
+            .where(
+                Tool.id == tool_id,  # type: ignore[arg-type]
+                Tool.version == expected_version,  # type: ignore[arg-type]
+            )
             .values(
                 **tool_data,
                 updated_at=new_updated_at,
@@ -245,7 +248,8 @@ class ToolRepository:
         self.session.commit()
 
         # 影響を受けた行数をチェック
-        if result.rowcount == 0:
+        # DML文の実行結果はCursorResultでrowcountを持つ
+        if result.rowcount == 0:  # type: ignore[attr-defined]
             # 存在確認済みなので、0行 = バージョン不一致
             # 現在のバージョンを取得して例外に含める
             self.session.refresh(tool)
