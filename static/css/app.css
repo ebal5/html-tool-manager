@@ -191,6 +191,29 @@ kbd {
   color: var(--pico-color-red-500);
 }
 
+/* Type Badge */
+.type-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.type-badge.html {
+  background-color: #E34C26;
+  color: #fff;
+}
+
+.type-badge.react {
+  background-color: #61DAFB;
+  color: #000;
+}
+
+/* Dropdown Menu */
+.dropdown-menu {
+  position: absolute;
+  z-index: 1;
+}
+
 /* View Switcher */
 :root {
   --card-min-width: 300px;

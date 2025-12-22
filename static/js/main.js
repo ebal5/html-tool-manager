@@ -323,7 +323,10 @@ document.addEventListener('DOMContentLoaded', () => {
       gridItem.dataset.toolId = tool.id;
       gridItem.setAttribute('tabindex', '0');
       gridItem.setAttribute('role', 'button');
-      gridItem.setAttribute('aria-label', `${tool.name}を表示`);
+      gridItem.setAttribute(
+        'aria-label',
+        `${sanitizeForAttribute(tool.name)}を表示`,
+      );
 
       const header = document.createElement('div');
       header.className = 'tool-grid-header';
@@ -430,21 +433,24 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --- Helper functions ---
+
+  // Sanitize text for safe use in attributes (removes control chars, normalizes whitespace)
+  function sanitizeForAttribute(text) {
+    if (!text) return '';
+    // Remove control characters (U+0000-U+001F, U+007F) and normalize whitespace
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: Intentionally matching control chars to sanitize
+    const controlCharRegex = /[\u0000-\u001F\u007F]/g;
+    return String(text)
+      .replace(controlCharRegex, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
   function createTypeBadge(toolType) {
     const typeBadge = document.createElement('code');
     const type = toolType || 'html';
-    if (type === 'react') {
-      typeBadge.textContent = 'React';
-      typeBadge.style.backgroundColor = '#61DAFB';
-      typeBadge.style.color = '#000';
-    } else {
-      typeBadge.textContent = 'HTML';
-      typeBadge.style.backgroundColor = '#E34C26';
-      typeBadge.style.color = '#fff';
-    }
-    typeBadge.style.padding = '0.25rem 0.5rem';
-    typeBadge.style.borderRadius = '0.25rem';
-    typeBadge.style.fontSize = '0.875rem';
+    typeBadge.className = `type-badge ${type}`;
+    typeBadge.textContent = type === 'react' ? 'React' : 'HTML';
     return typeBadge;
   }
 
@@ -467,8 +473,7 @@ document.addEventListener('DOMContentLoaded', () => {
     summary.textContent = '⋮';
 
     const ul = document.createElement('ul');
-    ul.style.position = 'absolute';
-    ul.style.zIndex = '1';
+    ul.className = 'dropdown-menu';
 
     const editLi = document.createElement('li');
     const editLink = document.createElement('a');
