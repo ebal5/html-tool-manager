@@ -154,6 +154,7 @@ const App = () => <div>Updated to React</div>;
         "description": "Now React",
         "html_content": jsx_code,
         "tool_type": "react",
+        "version": 1,
     }
     update_response = client.put(f"/api/tools/{tool_id}", json=update_data)
     assert update_response.status_code == 200

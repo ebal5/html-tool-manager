@@ -110,6 +110,7 @@ class Tool(ToolBase, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     filepath: str  # DB上では必須
+    version: int = Field(default=1, nullable=False)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
 
@@ -127,5 +128,14 @@ class ToolRead(ToolBase):
 
     id: int
     filepath: str
+    version: int
     created_at: datetime
     updated_at: datetime
+
+
+class ToolUpdate(ToolBase):
+    """Data model for API input when updating a tool."""
+
+    html_content: Optional[str] = None
+    tool_type: Optional[ToolType] = None
+    version: int  # 必須: 楽観的ロック用

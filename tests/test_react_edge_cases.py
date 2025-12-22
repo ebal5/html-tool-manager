@@ -136,6 +136,7 @@ def test_update_tool_without_changing_type(client: TestClient, session: Session)
     update_data = {
         "name": "Update Test",
         "description": "Updated description",
+        "version": 1,
     }
 
     update_response = client.put(f"/api/tools/{tool_id}", json=update_data)
@@ -274,6 +275,7 @@ def test_updated_at_changes_on_update(client: TestClient, session: Session):
     update_data = {
         "name": "UpdatedAt Test",
         "description": "Updated description",
+        "version": 1,
     }
     update_response = client.put(f"/api/tools/{tool_id}", json=update_data)
     assert update_response.status_code == 200

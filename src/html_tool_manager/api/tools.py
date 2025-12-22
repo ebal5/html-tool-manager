@@ -9,7 +9,7 @@ from html_tool_manager.core.config import app_settings
 from html_tool_manager.core.db import get_session
 from html_tool_manager.core.file_utils import atomic_write_file
 from html_tool_manager.core.security import is_path_within_base
-from html_tool_manager.models import SnapshotType, ToolCreate, ToolRead
+from html_tool_manager.models import SnapshotType, ToolCreate, ToolRead, ToolUpdate
 from html_tool_manager.models.tool import NAME_MAX_LENGTH
 from html_tool_manager.repositories import SnapshotRepository, SortOrder, ToolRepository
 
@@ -120,12 +120,24 @@ def read_tool(tool_id: int, session: Session = Depends(get_session)) -> ToolRead
 
 
 @router.put("/{tool_id}", response_model=ToolRead)
-def update_tool(tool_id: int, tool_data: ToolCreate, session: Session = Depends(get_session)) -> ToolRead:
-    """Update an existing tool."""
+def update_tool(tool_id: int, tool_data: ToolUpdate, session: Session = Depends(get_session)) -> ToolRead:
+    """Update an existing tool with optimistic locking."""
     repo = ToolRepository(session)
     tool_to_update = repo.get_tool(tool_id)
     if not tool_to_update:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tool not found")
+
+    # 楽観的ロックチェック（ファイル処理の前に実行）
+    if tool_to_update.version != tool_data.version:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "message": "このツールは他のユーザーによって更新されています",
+                "error_code": "OPTIMISTIC_LOCK_CONFLICT",
+                "current_version": tool_to_update.version,
+                "your_version": tool_data.version,
+            },
+        )
 
     # html_contentが提供された場合は、既存のファイルを上書き
     if tool_data.html_content is not None:
@@ -173,12 +185,12 @@ def update_tool(tool_id: int, tool_data: ToolCreate, session: Session = Depends(
                 detail=f"Failed to write file: {e}",
             )
 
-    # メタデータを更新（filepathは変更不可 - セキュリティのため既存の値を維持）
-    update_data = tool_data.model_dump(exclude_unset=True, exclude={"html_content", "filepath"})
+    # メタデータを更新（filepathとversionは変更不可）
+    update_data = tool_data.model_dump(exclude_unset=True, exclude={"html_content", "filepath", "version"})
     tool_to_update.sqlmodel_update(update_data)
 
     # 存在確認は上で済んでいるため、update_toolは必ずToolを返す
-    updated_tool = repo.update_tool(tool_id, tool_to_update)
+    updated_tool = repo.update_tool(tool_id, tool_to_update, expected_version=tool_data.version)
     return ToolRead.model_validate(updated_tool)
 
 

@@ -199,13 +199,32 @@ class ToolRepository:
         results = self.session.exec(statement).all()
         return list(results)
 
-    def update_tool(self, tool_id: int, tool_update: Tool) -> Optional[Tool]:
-        """Update existing tool information."""
+    def update_tool(self, tool_id: int, tool_update: Tool, expected_version: int) -> Optional[Tool]:
+        """Update existing tool information with optimistic locking.
+
+        Args:
+            tool_id: The ID of the tool to update.
+            tool_update: The updated tool data.
+            expected_version: The expected version for optimistic locking.
+
+        Returns:
+            The updated tool, or None if not found.
+
+        Raises:
+            OptimisticLockError: If the expected version doesn't match the current version.
+
+        """
         from datetime import datetime, timezone
+
+        from html_tool_manager.core.exceptions import OptimisticLockError
 
         tool = self.session.get(Tool, tool_id)
         if not tool:
             return None
+
+        # 楽観的ロックチェック
+        if tool.version != expected_version:
+            raise OptimisticLockError(tool.version, expected_version)
 
         tool_data = tool_update.model_dump(exclude_unset=True)
         for key, value in tool_data.items():
@@ -213,6 +232,8 @@ class ToolRepository:
 
         # updated_atを現在時刻に更新
         tool.updated_at = datetime.now(timezone.utc)
+        # バージョンをインクリメント
+        tool.version += 1
 
         self.session.add(tool)
         self.session.commit()

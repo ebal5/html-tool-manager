@@ -242,6 +242,7 @@ class TestFilepathValidation:
                 "tags": [],
                 "html_content": "<p>updated</p>",
                 "filepath": "../../../evil/path",
+                "version": tool["version"],
             },
         )
 
