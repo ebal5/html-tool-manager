@@ -182,3 +182,85 @@ class TestVersionRequirement:
 
         # ToolUpdateモデルでversionが必須なので422 Unprocessable Entityになるはず
         assert update_response.status_code == 422
+
+
+class TestConcurrentHtmlContentUpdate:
+    """HTMLコンテンツの同時更新テスト。"""
+
+    def test_concurrent_html_content_conflict(self, session: Session, client: TestClient, test_tools_dir):
+        """2ユーザーが同時にHTMLコンテンツを更新した場合の競合テスト。"""
+        # ツール作成
+        create_response = client.post(
+            "/api/tools/",
+            json={"name": "Test Tool", "html_content": "<p>original</p>"},
+        )
+        tool_id = create_response.json()["id"]
+        version = create_response.json()["version"]
+
+        # ユーザーAとBが同じバージョンでツールを取得した状態をシミュレート
+        # ユーザーA: HTMLコンテンツを更新（成功するはず）
+        user_a_response = client.put(
+            f"/api/tools/{tool_id}",
+            json={
+                "name": "User A Update",
+                "html_content": "<p>User A content</p>",
+                "version": version,
+            },
+        )
+        assert user_a_response.status_code == 200
+        assert user_a_response.json()["version"] == 2
+
+        # ユーザーB: 古いバージョンで異なるHTMLコンテンツを更新（競合するはず）
+        user_b_response = client.put(
+            f"/api/tools/{tool_id}",
+            json={
+                "name": "User B Update",
+                "html_content": "<p>User B content</p>",
+                "version": version,  # 古いバージョン
+            },
+        )
+
+        # 409 Conflictが返されることを確認
+        assert user_b_response.status_code == 409
+        detail = user_b_response.json()["detail"]
+        assert detail["error_code"] == "OPTIMISTIC_LOCK_CONFLICT"
+        assert detail["current_version"] == 2
+        assert detail["your_version"] == version
+
+    def test_html_content_preserved_on_conflict(self, session: Session, client: TestClient, test_tools_dir):
+        """競合発生時にユーザーAの変更が保持されていることをテスト。"""
+        # ツール作成
+        create_response = client.post(
+            "/api/tools/",
+            json={"name": "Test Tool", "html_content": "<p>original</p>"},
+        )
+        tool_id = create_response.json()["id"]
+        version = create_response.json()["version"]
+
+        # ユーザーAが更新
+        user_a_content = "<p>User A content</p>"
+        client.put(
+            f"/api/tools/{tool_id}",
+            json={
+                "name": "User A Update",
+                "html_content": user_a_content,
+                "version": version,
+            },
+        )
+
+        # ユーザーBの更新が失敗
+        client.put(
+            f"/api/tools/{tool_id}",
+            json={
+                "name": "User B Update",
+                "html_content": "<p>User B content</p>",
+                "version": version,
+            },
+        )
+
+        # ツールを取得して、ユーザーAの変更が保持されていることを確認
+        get_response = client.get(f"/api/tools/{tool_id}")
+        assert get_response.status_code == 200
+        tool = get_response.json()
+        assert tool["name"] == "User A Update"
+        assert tool["version"] == 2

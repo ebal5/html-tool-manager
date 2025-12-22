@@ -7,6 +7,7 @@ from sqlmodel import Session
 
 from html_tool_manager.core.config import app_settings
 from html_tool_manager.core.db import get_session
+from html_tool_manager.core.exceptions import OptimisticLockError
 from html_tool_manager.core.file_utils import atomic_write_file
 from html_tool_manager.core.security import is_path_within_base
 from html_tool_manager.models import SnapshotType, ToolCreate, ToolRead, ToolUpdate
@@ -39,6 +40,25 @@ class ToolForkRequest(BaseModel):
 
 # インポートファイルの最大サイズ（10MB）
 MAX_IMPORT_FILE_SIZE = 10 * 1024 * 1024
+
+
+def _create_conflict_error_detail(current_version: int, your_version: int) -> dict:
+    """楽観的ロック競合時のエラー詳細を構築する。
+
+    Args:
+        current_version: DBの現在のバージョン。
+        your_version: リクエストに含まれていたバージョン。
+
+    Returns:
+        HTTPExceptionのdetailに渡す構造化された辞書。
+
+    """
+    return {
+        "message": "このツールは他のユーザーによって更新されています",
+        "error_code": "OPTIMISTIC_LOCK_CONFLICT",
+        "current_version": current_version,
+        "your_version": your_version,
+    }
 
 
 def validate_tool_filepath(filepath: str | None) -> str:
@@ -133,12 +153,7 @@ def update_tool(tool_id: int, tool_data: ToolUpdate, session: Session = Depends(
     if tool_to_update.version != tool_data.version:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail={
-                "message": "このツールは他のユーザーによって更新されています",
-                "error_code": "OPTIMISTIC_LOCK_CONFLICT",
-                "current_version": tool_to_update.version,
-                "your_version": tool_data.version,
-            },
+            detail=_create_conflict_error_detail(tool_to_update.version, tool_data.version),
         )
 
     # html_contentが提供された場合は、既存のファイルを上書き
@@ -191,11 +206,19 @@ def update_tool(tool_id: int, tool_data: ToolUpdate, session: Session = Depends(
             )
 
     # メタデータを更新（filepathとversionは変更不可）
+    # 注意: versionはシステムが自動管理するため、ユーザーからの変更は無視される
     update_data = tool_data.model_dump(exclude_unset=True, exclude={"html_content", "filepath", "version"})
     tool_to_update.sqlmodel_update(update_data)
 
-    # 存在確認は上で済んでいるため、update_toolは必ずToolを返す
-    updated_tool = repo.update_tool(tool_id, tool_to_update, expected_version=tool_data.version)
+    # リポジトリ層での最終バージョンチェック
+    # 事前チェック後に別のリクエストが更新した場合にここで検出される
+    try:
+        updated_tool = repo.update_tool(tool_id, tool_to_update, expected_version=tool_data.version)
+    except OptimisticLockError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=_create_conflict_error_detail(e.current_version, e.expected_version),
+        )
     return ToolRead.model_validate(updated_tool)
 
 
