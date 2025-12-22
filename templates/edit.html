@@ -93,6 +93,7 @@
         let originalFilepath = '';
         let isPastedContent = false;
         let codeEditor = null;
+        let currentVersion = null;
 
         // filepathからツールURLを生成（最後の2セグメント: {uuid}/index.html）
         function getToolUrl(filepath) {
@@ -131,6 +132,7 @@
                 tagsInput.value = tool.tags.join(', ');
                 toolTypeSelect.value = tool.tool_type || 'html';
                 originalFilepath = tool.filepath;
+                currentVersion = tool.version;
 
                 // filepathが存在すれば編集可能なコンテンツとみなす
                 const toolUrl = getToolUrl(originalFilepath);
@@ -218,7 +220,8 @@
                 description: validation.data.description,
                 tags: validation.data.tags,
                 tool_type: validation.data.tool_type,
-                filepath: originalFilepath
+                filepath: originalFilepath,
+                version: currentVersion
             };
 
             // If it was a pasted tool, include the updated HTML content
@@ -235,6 +238,8 @@
 
                 if (response.ok) {
                     const updatedTool = await response.json();
+                    // バージョンを更新
+                    currentVersion = updatedTool.version;
                     // XSS対策: DOM APIで安全に構築
                     messageDiv.innerHTML = '';
                     messageDiv.appendChild(document.createTextNode('ツール「'));
@@ -252,6 +257,32 @@
                     homeLink.textContent = '一覧に戻る';
                     messageDiv.appendChild(homeLink);
                     messageDiv.style.color = 'var(--pico-color-green-500)';
+                } else if (response.status === 409) {
+                    // 楽観的ロック競合エラー
+                    const errorData = await response.json();
+                    messageDiv.innerHTML = '';
+                    messageDiv.style.color = 'var(--pico-color-orange-500)';
+                    messageDiv.appendChild(document.createTextNode('⚠️ '));
+                    messageDiv.appendChild(document.createTextNode(
+                        errorData.detail?.message || 'このツールは他のユーザーによって更新されています。'
+                    ));
+                    messageDiv.appendChild(document.createElement('br'));
+                    const warningSmall = document.createElement('small');
+                    warningSmall.textContent = '※ 再読み込みすると、現在の編集内容は失われます。';
+                    warningSmall.style.display = 'block';
+                    warningSmall.style.marginTop = '0.25rem';
+                    messageDiv.appendChild(warningSmall);
+                    const reloadBtn = document.createElement('button');
+                    reloadBtn.type = 'button';
+                    reloadBtn.className = 'secondary outline';
+                    reloadBtn.style.marginTop = '0.5rem';
+                    reloadBtn.textContent = '最新データを読み込む';
+                    reloadBtn.addEventListener('click', () => {
+                        if (confirm('現在の編集内容は失われます。よろしいですか？')) {
+                            location.reload();
+                        }
+                    });
+                    messageDiv.appendChild(reloadBtn);
                 } else {
                     const errorData = await response.json();
                     showError(errorData.detail || '不明なエラーが発生しました');

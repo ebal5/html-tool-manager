@@ -193,6 +193,7 @@ class TestSnapshotAPI:
                 "tags": tool_with_file.tags,
                 "filepath": tool_with_file.filepath,
                 "html_content": "<html><body>Updated content</body></html>",
+                "version": tool_with_file.version,
             },
         )
 
@@ -220,6 +221,7 @@ class TestSnapshotAPI:
                 "tags": tool_with_file.tags,
                 "filepath": tool_with_file.filepath,
                 "html_content": current_content,
+                "version": tool_with_file.version,
             },
         )
 

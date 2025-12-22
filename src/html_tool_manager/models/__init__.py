@@ -6,3 +6,4 @@ from .snapshot import ToolSnapshot as ToolSnapshot
 from .tool import Tool as Tool
 from .tool import ToolCreate as ToolCreate
 from .tool import ToolRead as ToolRead
+from .tool import ToolUpdate as ToolUpdate

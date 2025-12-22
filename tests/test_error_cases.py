@@ -14,7 +14,12 @@ def test_get_nonexistent_tool_returns_404(session: Session, client: TestClient):
 
 def test_update_nonexistent_tool_returns_404(session: Session, client: TestClient):
     """存在しないツールIDでPUTすると404が返ることをテストする。"""
-    tool_data = {"name": "Updated", "description": "Updated desc", "html_content": "<p>updated</p>"}
+    tool_data = {
+        "name": "Updated",
+        "description": "Updated desc",
+        "html_content": "<p>updated</p>",
+        "version": 1,
+    }
     response = client.put("/api/tools/99999", json=tool_data)
     assert response.status_code == 404
     assert response.json()["detail"] == "Tool not found"

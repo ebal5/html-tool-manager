@@ -7,9 +7,10 @@ from sqlmodel import Session
 
 from html_tool_manager.core.config import app_settings
 from html_tool_manager.core.db import get_session
+from html_tool_manager.core.exceptions import OptimisticLockError
 from html_tool_manager.core.file_utils import atomic_write_file
 from html_tool_manager.core.security import is_path_within_base
-from html_tool_manager.models import SnapshotType, ToolCreate, ToolRead
+from html_tool_manager.models import SnapshotType, ToolCreate, ToolRead, ToolUpdate
 from html_tool_manager.models.tool import NAME_MAX_LENGTH
 from html_tool_manager.repositories import SnapshotRepository, SortOrder, ToolRepository
 
@@ -39,6 +40,25 @@ class ToolForkRequest(BaseModel):
 
 # インポートファイルの最大サイズ（10MB）
 MAX_IMPORT_FILE_SIZE = 10 * 1024 * 1024
+
+
+def _create_conflict_error_detail(current_version: int, your_version: int) -> dict:
+    """楽観的ロック競合時のエラー詳細を構築する。
+
+    Args:
+        current_version: DBの現在のバージョン。
+        your_version: リクエストに含まれていたバージョン。
+
+    Returns:
+        HTTPExceptionのdetailに渡す構造化された辞書。
+
+    """
+    return {
+        "message": "このツールは他のユーザーによって更新されています",
+        "error_code": "OPTIMISTIC_LOCK_CONFLICT",
+        "current_version": current_version,
+        "your_version": your_version,
+    }
 
 
 def validate_tool_filepath(filepath: str | None) -> str:
@@ -120,12 +140,21 @@ def read_tool(tool_id: int, session: Session = Depends(get_session)) -> ToolRead
 
 
 @router.put("/{tool_id}", response_model=ToolRead)
-def update_tool(tool_id: int, tool_data: ToolCreate, session: Session = Depends(get_session)) -> ToolRead:
-    """Update an existing tool."""
+def update_tool(tool_id: int, tool_data: ToolUpdate, session: Session = Depends(get_session)) -> ToolRead:
+    """Update an existing tool with optimistic locking."""
     repo = ToolRepository(session)
     tool_to_update = repo.get_tool(tool_id)
     if not tool_to_update:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tool not found")
+
+    # 楽観的ロック事前チェック（ファイルI/Oの前に実行してUXを向上）
+    # 注意: これは早期失敗のための事前チェックです。
+    # 最終的なバージョンチェックはリポジトリ層で最新データに対して行われます。
+    if tool_to_update.version != tool_data.version:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=_create_conflict_error_detail(tool_to_update.version, tool_data.version),
+        )
 
     # html_contentが提供された場合は、既存のファイルを上書き
     if tool_data.html_content is not None:
@@ -142,6 +171,9 @@ def update_tool(tool_id: int, tool_data: ToolCreate, session: Session = Depends(
         filepath = validate_tool_filepath(tool_to_update.filepath)
 
         # 現在の内容を読み取り、変更がある場合のみスナップショット作成
+        # 注意: 事前チェック後でも稀に競合が発生する可能性があります。
+        # その場合、不要なスナップショットが作成されますが、
+        # 20件上限の自動クリーンアップにより影響は軽微です。
         try:
             with open(filepath, encoding="utf-8") as f:
                 current_content = f.read()
@@ -173,12 +205,20 @@ def update_tool(tool_id: int, tool_data: ToolCreate, session: Session = Depends(
                 detail=f"Failed to write file: {e}",
             )
 
-    # メタデータを更新（filepathは変更不可 - セキュリティのため既存の値を維持）
-    update_data = tool_data.model_dump(exclude_unset=True, exclude={"html_content", "filepath"})
+    # メタデータを更新（filepathとversionは変更不可）
+    # 注意: versionはシステムが自動管理するため、ユーザーからの変更は無視される
+    update_data = tool_data.model_dump(exclude_unset=True, exclude={"html_content", "filepath", "version"})
     tool_to_update.sqlmodel_update(update_data)
 
-    # 存在確認は上で済んでいるため、update_toolは必ずToolを返す
-    updated_tool = repo.update_tool(tool_id, tool_to_update)
+    # リポジトリ層での最終バージョンチェック
+    # 事前チェック後に別のリクエストが更新した場合にここで検出される
+    try:
+        updated_tool = repo.update_tool(tool_id, tool_to_update, expected_version=tool_data.version)
+    except OptimisticLockError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=_create_conflict_error_detail(e.current_version, e.expected_version),
+        )
     return ToolRead.model_validate(updated_tool)
 
 

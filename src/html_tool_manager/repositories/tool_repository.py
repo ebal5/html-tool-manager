@@ -4,7 +4,7 @@ import uuid
 from enum import Enum
 from typing import Dict, List, Optional
 
-from sqlalchemy import Column, Float, Integer, MetaData, String, Table, cast
+from sqlalchemy import Column, Float, Integer, MetaData, String, Table, cast, update
 from sqlalchemy.sql.elements import ColumnElement
 from sqlmodel import Session, select, text
 
@@ -199,23 +199,64 @@ class ToolRepository:
         results = self.session.exec(statement).all()
         return list(results)
 
-    def update_tool(self, tool_id: int, tool_update: Tool) -> Optional[Tool]:
-        """Update existing tool information."""
+    def update_tool(self, tool_id: int, tool_update: Tool, *, expected_version: int) -> Optional[Tool]:
+        """Update existing tool information with optimistic locking.
+
+        Uses atomic UPDATE with WHERE clause to prevent race conditions.
+        The version check and increment happen in a single SQL statement.
+
+        Args:
+            tool_id: The ID of the tool to update.
+            tool_update: The updated tool data.
+            expected_version: The expected version for optimistic locking.
+
+        Returns:
+            The updated tool, or None if not found.
+
+        Raises:
+            OptimisticLockError: If the expected version doesn't match the current version.
+
+        """
         from datetime import datetime, timezone
 
+        from html_tool_manager.core.exceptions import OptimisticLockError
+
+        # まず存在確認（404判定用）
         tool = self.session.get(Tool, tool_id)
         if not tool:
             return None
 
-        tool_data = tool_update.model_dump(exclude_unset=True)
-        for key, value in tool_data.items():
-            setattr(tool, key, value)
+        # 更新データを準備（version, updated_atはここで明示的に設定するため除外）
+        tool_data = tool_update.model_dump(exclude_unset=True, exclude={"version", "updated_at"})
+        new_updated_at = datetime.now(timezone.utc)
 
-        # updated_atを現在時刻に更新
-        tool.updated_at = datetime.now(timezone.utc)
-
-        self.session.add(tool)
+        # アトミックなUPDATEクエリ
+        # WHERE句にversionを含めることで、バージョンチェックと更新を単一クエリで実行
+        stmt = (
+            update(Tool)
+            .where(
+                Tool.id == tool_id,  # type: ignore[arg-type]
+                Tool.version == expected_version,  # type: ignore[arg-type]
+            )
+            .values(
+                **tool_data,
+                updated_at=new_updated_at,
+                version=expected_version + 1,
+            )
+        )
+        result = self.session.execute(stmt)
         self.session.commit()
+
+        # 影響を受けた行数をチェック
+        # DML文の実行結果はCursorResultでrowcountを持つ
+        if result.rowcount == 0:  # type: ignore[attr-defined]
+            # 存在確認済みなので、0行 = バージョン不一致
+            # toolオブジェクトはUPDATE前に取得したものなので、
+            # refreshでDBから最新のバージョンを再取得する
+            self.session.refresh(tool)
+            raise OptimisticLockError(tool.version, expected_version)
+
+        # 更新後のツールを取得して返す
         self.session.refresh(tool)
         return tool
 
