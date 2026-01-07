@@ -84,14 +84,22 @@ def load_templates_data() -> dict[str, Any]:
             detail="Templates configuration not found",
         )
     try:
-        with open(TEMPLATES_JSON, encoding="utf-8") as f:
-            data: dict[str, Any] = json.load(f)
-            _templates_cache = data
-            return data
+        # TOCTOU対策: secure_read_file()はO_NOFOLLOWを使用してシンボリックリンク攻撃を防ぐ
+        from html_tool_manager.core.file_utils import secure_read_file
+
+        content = secure_read_file(str(TEMPLATES_JSON))
+        data: dict[str, Any] = json.loads(content)
+        _templates_cache = data
+        return data
     except json.JSONDecodeError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Invalid templates configuration: {e}",
+        )
+    except OSError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to read templates configuration: {e}",
         )
 
 
@@ -212,7 +220,10 @@ def add_template_as_tool(
         )
 
     try:
-        html_content = template_file.read_text(encoding="utf-8")
+        # TOCTOU対策: secure_read_file()はO_NOFOLLOWを使用してシンボリックリンク攻撃を防ぐ
+        from html_tool_manager.core.file_utils import secure_read_file
+
+        html_content = secure_read_file(str(template_file))
     except OSError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -8,7 +8,7 @@ from sqlmodel import Session
 
 from html_tool_manager.core.config import app_settings
 from html_tool_manager.core.db import get_session
-from html_tool_manager.core.file_utils import atomic_write_file
+from html_tool_manager.core.file_utils import atomic_write_file, secure_read_file
 from html_tool_manager.core.security import is_path_within_base
 from html_tool_manager.models import (
     SnapshotCreate,
@@ -42,10 +42,13 @@ def _get_tool_or_404(tool_id: int, session: Session) -> None:
 
 
 def _read_current_content(filepath: str) -> str:
-    """Read current HTML content from file."""
+    """Read current HTML content from file with TOCTOU protection.
+
+    Uses secure_read_file() with O_NOFOLLOW to prevent symlink attacks.
+    """
     try:
-        with open(filepath, encoding="utf-8") as f:
-            return f.read()
+        # TOCTOU対策: secure_read_file()はO_NOFOLLOWを使用してシンボリックリンク攻撃を防ぐ
+        return secure_read_file(filepath)
     except FileNotFoundError:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tool file not found")
     except PermissionError:
