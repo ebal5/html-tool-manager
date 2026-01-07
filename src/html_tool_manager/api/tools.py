@@ -8,7 +8,7 @@ from sqlmodel import Session
 from html_tool_manager.core.config import app_settings
 from html_tool_manager.core.db import get_session
 from html_tool_manager.core.exceptions import OptimisticLockError
-from html_tool_manager.core.file_utils import atomic_write_file
+from html_tool_manager.core.file_utils import atomic_write_file, secure_read_file
 from html_tool_manager.core.security import is_path_within_base
 from html_tool_manager.models import SnapshotType, ToolCreate, ToolRead, ToolUpdate
 from html_tool_manager.models.tool import NAME_MAX_LENGTH
@@ -175,8 +175,8 @@ def update_tool(tool_id: int, tool_data: ToolUpdate, session: Session = Depends(
         # その場合、不要なスナップショットが作成されますが、
         # 20件上限の自動クリーンアップにより影響は軽微です。
         try:
-            with open(filepath, encoding="utf-8") as f:
-                current_content = f.read()
+            # TOCTOU対策: secure_read_file()はO_NOFOLLOWを使用してシンボリックリンク攻撃を防ぐ
+            current_content = secure_read_file(filepath)
             # 内容が変更されている場合のみスナップショット作成
             if current_content != final_html:
                 snapshot_repo = SnapshotRepository(session)
@@ -261,8 +261,8 @@ def fork_tool(
     filepath = validate_tool_filepath(original_tool.filepath)
 
     try:
-        with open(filepath, encoding="utf-8") as f:
-            html_content = f.read()
+        # TOCTOU対策: secure_read_file()はO_NOFOLLOWを使用してシンボリックリンク攻撃を防ぐ
+        html_content = secure_read_file(filepath)
     except FileNotFoundError:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tool file not found")
     except (PermissionError, OSError):
@@ -315,10 +315,13 @@ def export_tools(export_request: ToolExportRequest, session: Session = Depends(g
         if tool:
             # HTMLコンテンツを読み込む
             try:
-                with open(tool.filepath, "r", encoding="utf-8") as f:
-                    html_content = f.read()
+                # TOCTOU対策: secure_read_file()はO_NOFOLLOWを使用してシンボリックリンク攻撃を防ぐ
+                html_content = secure_read_file(tool.filepath)
             except FileNotFoundError:
                 # ファイルが見つからない場合はスキップ
+                continue
+            except OSError:
+                # シンボリックリンクの場合などはスキップ
                 continue
 
             tool_data = {
